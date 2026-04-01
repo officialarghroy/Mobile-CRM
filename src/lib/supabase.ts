@@ -2,12 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrlEnv = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKeyEnv = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrlEnv || !supabaseAnonKeyEnv) {
   throw new Error("Missing Supabase environment variables");
 }
+
+const supabaseUrl: string = supabaseUrlEnv;
+const supabaseAnonKey: string = supabaseAnonKeyEnv;
 
 /** Browser or simple anon usage (no request cookies). Prefer `createSupabaseServerClient` in Server Components and Server Actions. */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
