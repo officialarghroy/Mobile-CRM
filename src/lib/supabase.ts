@@ -1,35 +1,20 @@
-import { createClient } from "@supabase/supabase-js";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient as createSupabaseJsClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
-const supabaseUrlEnv = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKeyEnv = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { supabaseAnonKey, supabaseUrl } from "@/lib/supabaseEnv";
 
-if (!supabaseUrlEnv || !supabaseAnonKeyEnv) {
-  throw new Error("Missing Supabase environment variables");
-}
+/** Server Components and anon requests (no request-scoped auth cookies). */
+export const supabase = createSupabaseJsClient(supabaseUrl, supabaseAnonKey);
 
-const supabaseUrl: string = supabaseUrlEnv;
-const supabaseAnonKey: string = supabaseAnonKeyEnv;
+let browserClient: ReturnType<typeof createBrowserClient> | null = null;
 
-/** Browser or simple anon usage (no request cookies). Prefer `createSupabaseServerClient` in Server Components and Server Actions. */
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-export async function createSupabaseServerClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        } catch {
-          /* Called from a Server Component where cookies are read-only. */
-        }
-      },
-    },
-  });
+/** Client Components only: session is stored in browser cookies per Supabase SSR. */
+export function getSupabaseBrowserClient() {
+  if (typeof window === "undefined") {
+    throw new Error("getSupabaseBrowserClient is only available in the browser");
+  }
+  if (!browserClient) {
+    browserClient = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+  return browserClient;
 }

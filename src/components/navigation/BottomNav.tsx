@@ -20,7 +20,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-30 bg-transparent"
     >
       <Container className="pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        <div className="grid grid-cols-2 gap-0.5 rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] p-0.5 shadow-[var(--shadow-elevated)]">
+        <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0.5 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           <Link
             href="/leads"
             className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] py-2 text-[0.75rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${

@@ -1,8 +1,8 @@
-import { revalidatePath } from "next/cache";
 import { Container } from "@/components/ui/Container";
 import { AddLeadInline } from "@/components/leads/AddLeadInline";
 import { LeadsListSection } from "@/components/leads/LeadsListSection";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createLead } from "./actions";
 
 type Lead = {
   id: string;
@@ -31,13 +31,11 @@ type LeadCardData = {
   address: string;
   type: "lead" | "client";
   update: string;
+  activityAt: string;
   timestamp: string;
 };
 
-type SupabaseError = {
-  code?: string;
-  message?: string;
-};
+export const dynamic = "force-dynamic";
 
 function formatTimestamp(createdAt: string): string {
   const date = new Date(createdAt);
@@ -61,32 +59,19 @@ function formatTimestamp(createdAt: string): string {
     return "Yesterday";
   }
 
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
 }
 
+type SupabaseError = {
+  code?: string;
+  message?: string;
+};
+
 export default async function LeadsPage() {
-  const createLead = async (formData: FormData) => {
-    "use server";
-
-    const name = String(formData.get("name") ?? "").trim();
-    if (!name) return;
-
-    try {
-      const { error } = await supabase.from("leads").insert({ name, type: "lead" });
-      if (error) {
-        const supabaseError = error as SupabaseError;
-        if (supabaseError.code === "PGRST205") return;
-        throw error;
-      }
-      revalidatePath("/leads");
-    } catch (error) {
-      console.error("Failed to create lead:", error);
-      throw error;
-    }
-  };
+  const supabase = await createSupabaseServerClient();
 
   let leads: LeadCardData[] = [];
 
@@ -136,6 +121,7 @@ export default async function LeadsPage() {
           typeof lead.type === "string" && lead.type.trim().toLowerCase() === "client"
             ? "client"
             : "lead";
+        const activityAt = latestActivity?.createdAt ?? lead.created_at;
         return {
           id: lead.id,
           name: lead.name,
@@ -143,7 +129,8 @@ export default async function LeadsPage() {
           address: lead.address ?? "",
           type: normalizedType,
           update: latestActivity?.content ?? "No activity yet",
-          timestamp: formatTimestamp(latestActivity?.createdAt ?? lead.created_at),
+          activityAt,
+          timestamp: formatTimestamp(activityAt),
         };
       });
     }
@@ -153,7 +140,7 @@ export default async function LeadsPage() {
 
   return (
     <main className="flex min-h-dvh w-full items-start py-5">
-      <Container className="space-y-6 pb-6">
+      <Container className="space-y-5 pb-6">
         <header className="pt-1">
           <AddLeadInline createLead={createLead} />
         </header>

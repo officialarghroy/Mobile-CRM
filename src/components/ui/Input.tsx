@@ -9,12 +9,12 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 export function Input({ label, hint, error, className = "", id, ...props }: InputProps) {
   const inputId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
   const baseInputClasses =
-    "relative z-10 h-11 min-h-11 w-full rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[0.875rem] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/75 outline-none transition-colors duration-150 focus:z-20 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f]";
+    "relative z-10 h-11 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 text-[0.875rem] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/75 outline-none transition-colors duration-150 focus:z-20 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f]";
 
   return (
-    <div className="relative z-0 w-full space-y-2.5 overflow-visible focus-within:z-20">
+    <div className="relative z-0 flex w-full flex-col gap-2 overflow-visible focus-within:z-20">
       {label ? (
-        <label htmlFor={inputId} className="text-[0.8125rem] font-semibold text-[var(--text-primary)]">
+        <label htmlFor={inputId} className="text-sm font-medium text-[var(--text-primary)]">
           {label}
         </label>
       ) : null}
@@ -25,8 +25,8 @@ export function Input({ label, hint, error, className = "", id, ...props }: Inpu
         {...props}
       />
 
-      {error ? <p className="text-meta text-[var(--text-danger)]">{error}</p> : null}
-      {!error && hint ? <p className="text-meta">{hint}</p> : null}
+      {error ? <p className="crm-meta text-[var(--text-danger)]">{error}</p> : null}
+      {!error && hint ? <p className="crm-meta">{hint}</p> : null}
     </div>
   );
 }

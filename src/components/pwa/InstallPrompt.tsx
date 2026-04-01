@@ -65,7 +65,7 @@ export function InstallPrompt() {
 
   return (
     <div className="mx-auto w-full max-w-[480px] px-5 pb-2">
-      <Button type="button" className="h-10 w-full text-[0.875rem]" onClick={handleInstall}>
+      <Button type="button" className="w-full" onClick={handleInstall}>
         Install App
       </Button>
     </div>

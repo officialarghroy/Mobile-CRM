@@ -1,12 +1,11 @@
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { RiArrowDownSLine, RiDeleteBinLine } from "react-icons/ri";
 import { Container } from "@/components/ui/Container";
 import { LeadUpdatesSection, type UpdateCardData } from "@/components/leads/LeadUpdatesSection";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { getCurrentUser } from "@/lib/currentUser";
-import { createSupabaseServerClient } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { createLeadUpdate, deleteLead, updateLead } from "./actions";
 
 type LeadUpdate = {
   id: string;
@@ -66,101 +65,12 @@ function formatRelativeTimestamp(createdAt: string): string {
 export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const resolvedParams = await params;
   const leadId = resolvedParams?.id ?? "";
-  const currentUser = await getCurrentUser();
 
-  const createLeadUpdate = async (formData: FormData) => {
-    "use server";
-
-    const supabase = await createSupabaseServerClient();
-    const content = String(formData.get("content") ?? "").trim();
-    if (!content || !leadId) return;
-
-    try {
-      const { error } = await supabase.from("lead_updates").insert({
-        lead_id: leadId,
-        content,
-        created_by: currentUser,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      revalidatePath(`/leads/${leadId}`);
-      revalidatePath("/leads");
-    } catch (error) {
-      console.error("Failed to create lead update:", error);
-      throw error;
-    }
-  };
-
-  const updateLead = async (formData: FormData) => {
-    "use server";
-
-    const supabase = await createSupabaseServerClient();
-
-    if (!leadId) return;
-
-    const name = String(formData.get("name") ?? "").trim();
-    const business = String(formData.get("business") ?? "").trim();
-    const address = String(formData.get("address") ?? "").trim();
-    const rawType = String(formData.get("type") || "").trim().toLowerCase();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(leadId);
-
-    console.log("Updating lead:", {
-      id: leadId,
-      isUuid,
-      type: formData.get("type"),
-    });
-
-    try {
-      const { data, error } = await supabase
-        .from("leads")
-        .update({
-          name,
-          business,
-          address,
-          type: rawType === "client" ? "client" : "lead",
-        })
-        .select("id, type")
-        .eq("id", leadId);
-
-      console.log("Update result:", data, error);
-
-      if (error) {
-        console.error("Update failed:", error);
-        throw error;
-      }
-
-      revalidatePath(`/leads/${leadId}`);
-      revalidatePath("/leads");
-    } catch (error) {
-      console.error("Failed to update lead:", error);
-      throw error;
-    }
-  };
-
-  const deleteLead = async (_formData: FormData) => {
-    "use server";
-
-    if (!leadId) return;
-
-    const supabase = await createSupabaseServerClient();
-
-    try {
-      const { error: updatesError } = await supabase.from("lead_updates").delete().eq("lead_id", leadId);
-      if (updatesError) throw updatesError;
-
-      const { error } = await supabase.from("leads").delete().eq("id", leadId);
-      if (error) throw error;
-
-      revalidatePath("/leads");
-      redirect("/leads");
-    } catch (error) {
-      console.error("Failed to delete lead:", error);
-      throw error;
-    }
-  };
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerEmail = user?.email ?? "";
 
   let leadName = formatLeadNameFromSlug(leadId) || "Lead Detail";
   let leadBusiness = "";
@@ -169,7 +79,6 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   let updates: UpdateCardData[] = [];
 
   try {
-    const supabase = await createSupabaseServerClient();
     const [{ data: leadData, error: leadError }, { data: updatesData, error: updatesError }] = await Promise.all([
       supabase.from("leads").select("name, business, address, type").eq("id", leadId).single(),
       supabase
@@ -206,48 +115,68 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     console.error("Failed to fetch lead updates:", error);
   }
 
-  return (
-    <main className="flex min-h-dvh w-full items-start py-5">
-      <Container className="space-y-6 pb-24">
-        <header className="pt-1">
-          <h1 className="text-title max-w-full truncate">{leadName}</h1>
-        </header>
+  const contactFormKey = [leadId, leadType, leadName, leadBusiness, leadAddress].join("\u001f");
 
-        <p className="crm-section-label">Contact</p>
-        <Card className="space-y-4">
-          <form action={updateLead} className="space-y-4">
+  return (
+    <main className="flex w-full flex-1 flex-col py-5">
+      <Container className="flex flex-1 flex-col space-y-5 pb-24">
+        <p className="crm-section-label pt-1">Contact</p>
+        <Card className="flex flex-col gap-3">
+          <form
+            key={contactFormKey}
+            action={updateLead.bind(null, leadId)}
+            className="flex flex-col gap-3"
+          >
             <Input name="name" label="Name" defaultValue={leadName || ""} />
             <Input name="business" label="Business" defaultValue={leadBusiness || ""} />
             <Input name="address" label="Address" defaultValue={leadAddress || ""} />
 
-            <div className="space-y-2">
-              <label htmlFor="lead-type" className="text-[0.8125rem] font-semibold text-[var(--text-primary)]">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="lead-type" className="text-sm font-medium text-[var(--text-primary)]">
                 Type
               </label>
-              <select
-                id="lead-type"
-                name="type"
-                defaultValue={leadType}
-                className="h-11 min-h-11 w-full rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[0.875rem] text-[var(--text-primary)] outline-none transition-colors duration-150 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f]"
-              >
-                <option value="lead">Lead</option>
-                <option value="client">Client</option>
-              </select>
+              <div className="relative">
+                <select
+                  id="lead-type"
+                  name="type"
+                  defaultValue={leadType}
+                  className="h-11 min-h-11 w-full cursor-pointer appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] py-0 pl-4 pr-11 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f]"
+                >
+                  <option value="lead">Lead</option>
+                  <option value="client">Client</option>
+                </select>
+                <RiArrowDownSLine
+                  className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[var(--text-secondary)]"
+                  aria-hidden
+                />
+              </div>
             </div>
 
-            <Button type="submit" className="h-10 w-full">
+            <Button type="submit" className="w-full">
               Save
             </Button>
           </form>
         </Card>
 
-        <form action={deleteLead} className="pt-1">
-          <Button type="submit" variant="ghost" className="h-10 w-full text-[var(--text-secondary)]">
-            Delete Lead
+        <LeadUpdatesSection
+          initialUpdates={updates}
+          createLeadUpdate={createLeadUpdate.bind(null, leadId)}
+          viewerEmail={viewerEmail}
+        />
+
+        <form
+          action={deleteLead.bind(null, leadId)}
+          className="mt-auto border-t border-[var(--border)] pt-5"
+        >
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full gap-2 border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500"
+          >
+            <RiDeleteBinLine className="size-4 shrink-0" aria-hidden />
+            Delete
           </Button>
         </form>
-
-        <LeadUpdatesSection initialUpdates={updates} createLeadUpdate={createLeadUpdate} currentUser={currentUser} />
       </Container>
     </main>
   );

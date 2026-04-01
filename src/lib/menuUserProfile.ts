@@ -1,0 +1,50 @@
+import { getDisplayNameFromUser } from "@/lib/authDisplayName";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
+
+export type MenuUserProfile = {
+  displayName: string;
+  email: string | null;
+  hasSupabaseAuth: boolean;
+};
+
+export async function getMenuUserProfile(): Promise<MenuUserProfile> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const email = user.email ?? null;
+      let displayName = getDisplayNameFromUser(user);
+
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!profileError && profile) {
+        const fromProfile =
+          typeof profile.display_name === "string" ? profile.display_name.trim() : "";
+        if (fromProfile) {
+          displayName = fromProfile;
+        }
+      }
+
+      return {
+        displayName,
+        email,
+        hasSupabaseAuth: true,
+      };
+    }
+  } catch {
+    /* Supabase session unavailable */
+  }
+
+  return {
+    displayName: "Sign in",
+    email: null,
+    hasSupabaseAuth: false,
+  };
+}

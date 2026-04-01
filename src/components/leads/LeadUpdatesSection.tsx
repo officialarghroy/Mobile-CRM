@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 export type UpdateCardData = {
@@ -15,10 +16,10 @@ export type UpdateCardData = {
 type LeadUpdatesSectionProps = {
   initialUpdates: UpdateCardData[];
   createLeadUpdate: (formData: FormData) => Promise<void>;
-  currentUser: string;
+  viewerEmail: string;
 };
 
-export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, currentUser }: LeadUpdatesSectionProps) {
+export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, viewerEmail }: LeadUpdatesSectionProps) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const [updates, setUpdates] = useState<UpdateCardData[]>(initialUpdates);
@@ -53,7 +54,7 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, currentUs
         hour: "numeric",
         minute: "2-digit",
       }),
-      author: currentUser,
+      author: viewerEmail,
     };
 
     setUpdates((prev) => [optimisticUpdate, ...prev]);
@@ -74,14 +75,12 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, currentUs
   };
 
   return (
-    <>
+    <div className="flex flex-col space-y-5">
       <p className="crm-section-label">Activity</p>
-      <Card className="space-y-3 border-[#d4e2fc] bg-[var(--surface-accent)] shadow-[var(--shadow-card)]">
-        <div className="space-y-0.5">
-          <p className="text-[0.8125rem] font-semibold text-[var(--text-primary)]">Log activity</p>
-          <p className="text-[0.6875rem] leading-snug text-[var(--text-secondary)]">Add a note visible on this record.</p>
-        </div>
-        <form className="space-y-3" onSubmit={handleSubmit}>
+
+      <Card className="flex flex-col gap-3 border-[#d4e2fc] bg-[var(--surface-accent)]">
+        <p className="crm-meta leading-snug">Add a note visible on this record.</p>
+        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
           <label htmlFor="lead-update" className="sr-only">
             Add update
           </label>
@@ -91,60 +90,49 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, currentUs
             onChange={(event) => setDraft(event.target.value)}
             placeholder="What happened? (e.g. visited store, spoke to client...)"
             rows={4}
-            className="w-full resize-none rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface)] p-3.5 text-[0.875rem] text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]"
+            className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]"
           />
-          <button
-            type="submit"
-            className="h-10 w-full rounded-[var(--radius-card)] bg-[var(--accent)] px-4 text-[0.875rem] font-semibold text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)] transition-transform duration-150 hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
-            disabled={isPending || !draft.trim()}
-          >
+          <Button type="submit" className="w-full" disabled={isPending || !draft.trim()}>
             {isPending ? "Adding..." : "Save Update"}
-          </button>
-          {showSaved ? <p className="text-xs text-[var(--text-secondary)]">Saved</p> : null}
+          </Button>
+          {showSaved ? <p className="crm-meta">Saved</p> : null}
         </form>
       </Card>
 
-      <div className="my-4 h-px bg-[var(--border)]" />
-
-      <section className="space-y-4 pb-6" aria-label="Activity history">
-        <div className="space-y-0.5">
-          <h2 className="text-[1rem] font-semibold leading-tight tracking-tight text-[var(--text-primary)]">History</h2>
-          <p className="text-[0.6875rem] text-[var(--text-secondary)]">Newest first</p>
-        </div>
+      <section className="flex flex-col space-y-5 pb-2" aria-label="Activity history">
         {!updates.length ? (
-          <div className="py-6 text-center text-[0.8125rem] text-[var(--text-secondary)]">
+          <div className="py-6 text-center text-sm text-[var(--text-secondary)]">
             <p>No updates yet. Log your first activity.</p>
           </div>
         ) : null}
-        {updates.length > 0 ? <p className="crm-section-label mb-2">Latest activity</p> : null}
-        <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           {updates.map((update, index) => (
             <div
               key={update.id}
-              className={`border-b border-[var(--border)] border-l-[3px] border-l-[#cbd5e1] px-3 py-3.5 last:border-b-0 ${
+              className={`border-b border-[var(--border)] border-l-[3px] border-l-[#cbd5e1] px-4 py-4 last:border-b-0 ${
                 index === 0 ? "bg-[var(--surface-muted)]" : "bg-[var(--surface)]"
               }`}
             >
               <div className="flex items-start justify-between gap-3 pl-1">
                 <div className="min-w-0 flex-1">
                   <p
-                    className={`text-[0.875rem] font-semibold leading-snug ${
+                    className={`text-sm font-semibold leading-snug ${
                       index === 0 ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]/95"
                     }`}
                   >
                     {update.content}
                   </p>
-                  <p className="mt-1 text-[0.6875rem] text-[var(--text-secondary)]">{update.author}</p>
+                  <p className="crm-meta mt-1">{update.author}</p>
                 </div>
-                <div className="shrink-0 pt-0.5 text-right">
-                  <p className="text-[0.6875rem] text-[var(--text-secondary)]">{update.relativeTime}</p>
-                  <p className="mt-1 text-[0.625rem] text-[var(--text-tertiary)]">{update.fullTimestamp}</p>
+                <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5 text-right">
+                  <p className="crm-meta">{update.relativeTime}</p>
+                  <p className="crm-meta text-[var(--text-tertiary)]">{update.fullTimestamp}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
       </section>
-    </>
+    </div>
   );
 }

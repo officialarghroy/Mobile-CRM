@@ -87,11 +87,26 @@ body {
   box-shadow: var(--shadow-card);
 }
 
-.crm-section-label {
-  font-size: 0.625rem;
+/* Page + section hierarchy (CRM-wide) */
+.crm-page-title {
+  font-size: 1.25rem;
+  line-height: 1.3;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.crm-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.crm-meta {
+  font-size: 0.75rem;
+  line-height: 1.35;
   color: var(--text-secondary);
 }
 

@@ -7,22 +7,42 @@ import { Input } from "@/components/ui/Input";
 
 type AddEventInlineProps = {
   createEvent: (formData: FormData) => Promise<void>;
+  defaultDate: Date;
+  onClose: () => void;
 };
 
-export function AddEventInline({ createEvent }: AddEventInlineProps) {
+function toDatetimeLocalValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function startOfDayAtNine(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0, 0, 0);
+}
+
+export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventInlineProps) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [showSaved, setShowSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const [startTime, setStartTime] = useState(() => toDatetimeLocalValue(startOfDayAtNine(defaultDate)));
+  const [endTime, setEndTime] = useState(() =>
+    toDatetimeLocalValue(new Date(startOfDayAtNine(defaultDate).getTime() + 60 * 60 * 1000)),
+  );
+
   useEffect(() => {
-    if (!showSaved) return;
-    const timer = window.setTimeout(() => setShowSaved(false), 1500);
-    return () => window.clearTimeout(timer);
-  }, [showSaved]);
+    setStartTime(toDatetimeLocalValue(startOfDayAtNine(defaultDate)));
+    setEndTime(toDatetimeLocalValue(new Date(startOfDayAtNine(defaultDate).getTime() + 60 * 60 * 1000)));
+    setTitle("");
+  }, [defaultDate]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -37,51 +57,56 @@ export function AddEventInline({ createEvent }: AddEventInlineProps) {
         formData.set("end_time", endTime);
         await createEvent(formData);
         setTitle("");
-        setStartTime("");
-        setEndTime("");
-        setIsOpen(false);
-        setShowSaved(true);
+        onClose();
         router.refresh();
-      } catch (error) {
-        console.error("Failed to create event:", error);
+      } catch (err) {
+        console.error("Failed to create event:", err);
       }
     });
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <h1 className="text-title min-w-0 shrink truncate">Calendar</h1>
-        <Button className="h-10 min-h-10 min-w-[4.25rem] shrink-0 px-4 text-[0.875rem]" onClick={() => setIsOpen((prev) => !prev)}>
-          Add
-        </Button>
-      </div>
-
-      {isOpen ? (
-        <div className="space-y-2 overflow-visible">
-          <form className="space-y-3 overflow-visible" onSubmit={handleSubmit}>
-            <Input autoFocus placeholder="Event title" value={title} onChange={(event) => setTitle(event.target.value)} />
+    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-labelledby="add-event-calendar-title">
+      <button
+        type="button"
+        aria-label="Close"
+        className="absolute inset-0 bg-black/30"
+        onClick={onClose}
+      />
+      <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-5">
+        <div
+          className="pointer-events-auto w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-elevated)]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 id="add-event-calendar-title" className="mb-3 text-xl font-semibold text-[var(--text-primary)]">
+            New event
+          </h2>
+          <form className="flex flex-col gap-3 overflow-visible" onSubmit={handleSubmit}>
+            <Input
+              autoFocus
+              label="Event title"
+              placeholder="Event title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
             <Input
               type="datetime-local"
               label="Start time"
-              placeholder="Start time"
               value={startTime}
-              onChange={(event) => setStartTime(event.target.value)}
+              onChange={(e) => setStartTime(e.target.value)}
             />
             <Input
               type="datetime-local"
               label="End time"
-              placeholder="End time"
               value={endTime}
-              onChange={(event) => setEndTime(event.target.value)}
+              onChange={(e) => setEndTime(e.target.value)}
             />
-            <Button type="submit" className="h-10 w-full text-[0.875rem]" disabled={isPending}>
+            <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? "Adding..." : "Save Event"}
             </Button>
           </form>
-          {showSaved ? <p className="text-xs text-[var(--text-secondary)]">Saved</p> : null}
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
