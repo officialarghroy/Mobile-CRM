@@ -17,14 +17,14 @@ export function Button({
 }: ButtonProps) {
   const variantClasses =
     variant === "primary"
-      ? "bg-[var(--accent)] text-white hover:brightness-110"
-      : "border border-[var(--border)] bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]";
+      ? "bg-[var(--accent)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)] hover:brightness-105"
+      : "border border-[#1018283a] bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]";
 
   const sizeClasses =
-    size === "lg" ? "h-12 px-5 text-[0.95rem]" : "h-11 px-4 text-[0.9rem]";
+    size === "lg" ? "h-11 px-5 text-[0.9375rem]" : "h-10 min-h-10 px-4 text-[0.875rem]";
 
   const baseClasses =
-    "inline-flex items-center justify-center rounded-xl font-medium transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center rounded-[var(--radius-card)] font-semibold transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
     <button

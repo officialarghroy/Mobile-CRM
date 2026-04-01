@@ -49,16 +49,16 @@ export function AddEventInline({ createEvent }: AddEventInlineProps) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-title">Calendar</h1>
-        <Button className="h-9 px-3 text-sm" onClick={() => setIsOpen((prev) => !prev)}>
+    <div className="space-y-4">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <h1 className="text-title min-w-0 shrink truncate">Calendar</h1>
+        <Button className="h-10 min-h-10 min-w-[4.25rem] shrink-0 px-4 text-[0.875rem]" onClick={() => setIsOpen((prev) => !prev)}>
           Add
         </Button>
       </div>
 
       {isOpen ? (
-        <div className="space-y-1.5 overflow-visible">
+        <div className="space-y-2 overflow-visible">
           <form className="space-y-3 overflow-visible" onSubmit={handleSubmit}>
             <Input autoFocus placeholder="Event title" value={title} onChange={(event) => setTitle(event.target.value)} />
             <Input
@@ -75,7 +75,7 @@ export function AddEventInline({ createEvent }: AddEventInlineProps) {
               value={endTime}
               onChange={(event) => setEndTime(event.target.value)}
             />
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button type="submit" className="h-10 w-full text-[0.875rem]" disabled={isPending}>
               {isPending ? "Adding..." : "Save Event"}
             </Button>
           </form>

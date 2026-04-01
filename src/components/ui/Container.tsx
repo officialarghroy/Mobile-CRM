@@ -13,5 +13,5 @@ export function Container<T extends ElementType = "div">({
 }: ContainerProps<T>) {
   const Comp = as ?? "div";
 
-  return <Comp className={`mx-auto w-full max-w-[480px] px-4 ${className}`.trim()}>{children}</Comp>;
+  return <Comp className={`mx-auto w-full max-w-[480px] px-5 ${className}`.trim()}>{children}</Comp>;
 }

@@ -1,9 +1,9 @@
 import { revalidatePath } from "next/cache";
-import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
+import { Button } from "@/components/ui/Button";
 import { getCurrentUser } from "@/lib/currentUser";
-import { supabase } from "@/lib/supabase";
+import { createSupabaseServerClient } from "@/lib/supabase";
 
 type EventRow = {
   id: string;
@@ -50,6 +50,7 @@ export default async function CalendarPage() {
   const createEvent = async (formData: FormData) => {
     "use server";
 
+    const supabase = await createSupabaseServerClient();
     const title = String(formData.get("title") ?? "").trim();
     const startTime = String(formData.get("start_time") ?? "").trim();
     const endTime = String(formData.get("end_time") ?? "").trim();
@@ -75,10 +76,32 @@ export default async function CalendarPage() {
     }
   };
 
+  const deleteEvent = async (eventId: string, _formData: FormData) => {
+    "use server";
+
+    if (!eventId) return;
+
+    const supabase = await createSupabaseServerClient();
+
+    try {
+      const { error } = await supabase.from("events").delete().eq("id", eventId);
+
+      if (error) {
+        throw error;
+      }
+
+      revalidatePath("/calendar");
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+      throw error;
+    }
+  };
+
   let personalEvents: PersonalEvent[] = [];
   let teamEvents: TeamEvent[] = [];
 
   try {
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("events")
       .select("id, title, start_time, end_time, user_name")
@@ -112,66 +135,82 @@ export default async function CalendarPage() {
   }
 
   return (
-    <main className="flex min-h-dvh w-full items-start py-6">
+    <main className="flex min-h-dvh w-full items-start py-5">
       <Container className="space-y-6 pb-24">
-        <header className="pt-2">
+        <header className="pt-1">
           <AddEventInline createEvent={createEvent} />
         </header>
 
-        <section className="mt-8" aria-label="Personal events">
-          <h2 className="mb-2 text-xs uppercase tracking-wide text-[var(--text-secondary)]">Personal</h2>
+        <section className="mt-6" aria-label="Personal events">
+          <h2 className="crm-section-label mb-3">Personal</h2>
           {!personalEvents.length ? (
-            <p className="py-6 text-center text-sm text-[var(--text-secondary)]">No personal events</p>
-          ) : null}
-          <div className="space-y-4">
-            {personalEvents.map((event) => (
-              <button
-                key={event.id}
-                type="button"
-                className="block w-full text-left transition-transform duration-150 active:scale-[0.98]"
-              >
-                <Card className="rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[1.06rem] font-semibold leading-tight text-[var(--text-primary)]">
-                        {event.title}
+            <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-[0.8125rem] text-[var(--text-secondary)] shadow-[var(--shadow-card)]">
+              No personal events
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+              {personalEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] border-l-[var(--accent-strong)] bg-[var(--surface)] last:border-b-0"
+                >
+                  <div className="min-w-0 flex-1 px-3 py-3.5 pl-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-card-title truncate">{event.title}</p>
+                        <p className="text-card-meta mt-1">{event.time}</p>
+                      </div>
+                      <p className="shrink-0 pt-0.5 text-right text-[0.75rem] font-medium text-[var(--text-tertiary)]">
+                        {event.user}
                       </p>
-                      <p className="mt-1 text-sm leading-[1.45] text-[var(--text-secondary)]/92">{event.time}</p>
                     </div>
-                    <p className="shrink-0 pt-0.5 text-right text-xs text-[var(--text-secondary)]/62">{event.user}</p>
                   </div>
-                </Card>
-              </button>
-            ))}
-          </div>
+                  <form action={deleteEvent.bind(null, event.id)} className="flex shrink-0 items-center border-l border-[var(--border)] px-2">
+                    <Button type="submit" variant="ghost" className="h-9 min-h-9 px-3 text-[0.8125rem] text-[var(--text-secondary)]">
+                      Delete
+                    </Button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
-        <div className="mt-8 h-px bg-[color:rgba(255,255,255,0.05)]" />
+        <div className="mt-8 h-px bg-[var(--border)]" />
 
         <section className="mt-8" aria-label="Team events">
-          <h2 className="mb-2 text-xs uppercase tracking-wide text-[var(--text-secondary)]">Team</h2>
-          {!teamEvents.length ? <p className="py-6 text-center text-sm text-[var(--text-secondary)]">No team events</p> : null}
-          <div className="space-y-4">
-            {teamEvents.map((event) => (
-              <button
-                key={event.id}
-                type="button"
-                className="block w-full text-left transition-transform duration-150 active:scale-[0.98]"
-              >
-                <Card className="rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[1.06rem] font-semibold leading-tight text-[var(--text-primary)]">
-                        {event.title}
+          <h2 className="crm-section-label mb-3">Team</h2>
+          {!teamEvents.length ? (
+            <div className="rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] px-4 py-8 text-center text-[0.8125rem] text-[var(--text-secondary)] shadow-[var(--shadow-card)]">
+              No team events
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+              {teamEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] border-l-[#94a3b8] bg-[var(--surface)] last:border-b-0"
+                >
+                  <div className="min-w-0 flex-1 px-3 py-3.5 pl-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-card-title truncate">{event.title}</p>
+                        <p className="text-card-meta mt-1">{event.time}</p>
+                      </div>
+                      <p className="shrink-0 pt-0.5 text-right text-[0.75rem] font-medium text-[var(--text-tertiary)]">
+                        {event.user}
                       </p>
-                      <p className="mt-1 text-sm leading-[1.45] text-[var(--text-secondary)]/92">{event.time}</p>
                     </div>
-                    <p className="shrink-0 pt-0.5 text-right text-xs text-[var(--text-secondary)]/62">{event.user}</p>
                   </div>
-                </Card>
-              </button>
-            ))}
-          </div>
+                  <form action={deleteEvent.bind(null, event.id)} className="flex shrink-0 items-center border-l border-[var(--border)] px-2">
+                    <Button type="submit" variant="ghost" className="h-9 min-h-9 px-3 text-[0.8125rem] text-[var(--text-secondary)]">
+                      Delete
+                    </Button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </Container>
     </main>

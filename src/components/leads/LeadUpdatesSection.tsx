@@ -75,23 +75,27 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, currentUs
 
   return (
     <>
-      <Card className="space-y-3 p-4">
+      <p className="crm-section-label">Activity</p>
+      <Card className="space-y-3 border-[#d4e2fc] bg-[var(--surface-accent)] shadow-[var(--shadow-card)]">
+        <div className="space-y-0.5">
+          <p className="text-[0.8125rem] font-semibold text-[var(--text-primary)]">Log activity</p>
+          <p className="text-[0.6875rem] leading-snug text-[var(--text-secondary)]">Add a note visible on this record.</p>
+        </div>
         <form className="space-y-3" onSubmit={handleSubmit}>
           <label htmlFor="lead-update" className="sr-only">
             Add update
           </label>
           <textarea
             id="lead-update"
-            autoFocus
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="What happened? (e.g. visited store, spoke to client...)"
             rows={4}
-            className="w-full resize-none rounded-xl border border-[var(--border)] bg-transparent p-4 text-[0.95rem] text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/90 focus:border-[var(--accent)]"
+            className="w-full resize-none rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface)] p-3.5 text-[0.875rem] text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]"
           />
           <button
             type="submit"
-            className="h-11 w-full rounded-xl bg-[var(--accent)] px-4 text-[0.95rem] font-medium text-white transition-transform duration-150 hover:brightness-110 active:scale-[0.98] disabled:opacity-70"
+            className="h-10 w-full rounded-[var(--radius-card)] bg-[var(--accent)] px-4 text-[0.875rem] font-semibold text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)] transition-transform duration-150 hover:brightness-105 active:scale-[0.98] disabled:opacity-70"
             disabled={isPending || !draft.trim()}
           >
             {isPending ? "Adding..." : "Save Update"}
@@ -102,42 +106,41 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, currentUs
 
       <div className="my-4 h-px bg-[var(--border)]" />
 
-      <section className="space-y-4 pb-6" aria-label="Updates timeline">
-        <div className="space-y-1">
-          <h2 className="text-[1.12rem] font-semibold leading-tight text-[var(--text-primary)]">Updates Timeline</h2>
-          <p className="text-xs text-[var(--text-secondary)]/88">Latest updates</p>
+      <section className="space-y-4 pb-6" aria-label="Activity history">
+        <div className="space-y-0.5">
+          <h2 className="text-[1rem] font-semibold leading-tight tracking-tight text-[var(--text-primary)]">History</h2>
+          <p className="text-[0.6875rem] text-[var(--text-secondary)]">Newest first</p>
         </div>
         {!updates.length ? (
-          <div className="py-6 text-center text-sm text-[var(--text-secondary)]">
-            <p>No updates yet — log your first activity</p>
+          <div className="py-6 text-center text-[0.8125rem] text-[var(--text-secondary)]">
+            <p>No updates yet. Log your first activity.</p>
           </div>
         ) : null}
-        <div className="space-y-4">
+        {updates.length > 0 ? <p className="crm-section-label mb-2">Latest activity</p> : null}
+        <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
           {updates.map((update, index) => (
-            <div key={update.id} className="space-y-1.5">
-              {index === 0 ? <p className="text-xs font-medium text-[var(--text-secondary)]/88">Latest activity</p> : null}
-              <Card
-                className={`p-4 ${
-                  index === 0 ? "border-[color:rgba(255,255,255,0.08)] bg-[color:rgba(255,255,255,0.03)]" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={`text-[1.02rem] font-semibold leading-tight ${
-                        index === 0 ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]/95"
-                      }`}
-                    >
-                      {update.content}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--text-secondary)]/62">{update.author}</p>
-                  </div>
-                  <div className="shrink-0 pt-0.5 text-right">
-                    <p className="text-xs text-[var(--text-secondary)]/62">{update.relativeTime}</p>
-                    <p className="mt-1 text-xs text-[var(--text-secondary)]/52">{update.fullTimestamp}</p>
-                  </div>
+            <div
+              key={update.id}
+              className={`border-b border-[var(--border)] border-l-[3px] border-l-[#cbd5e1] px-3 py-3.5 last:border-b-0 ${
+                index === 0 ? "bg-[var(--surface-muted)]" : "bg-[var(--surface)]"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3 pl-1">
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`text-[0.875rem] font-semibold leading-snug ${
+                      index === 0 ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]/95"
+                    }`}
+                  >
+                    {update.content}
+                  </p>
+                  <p className="mt-1 text-[0.6875rem] text-[var(--text-secondary)]">{update.author}</p>
                 </div>
-              </Card>
+                <div className="shrink-0 pt-0.5 text-right">
+                  <p className="text-[0.6875rem] text-[var(--text-secondary)]">{update.relativeTime}</p>
+                  <p className="mt-1 text-[0.625rem] text-[var(--text-tertiary)]">{update.fullTimestamp}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>

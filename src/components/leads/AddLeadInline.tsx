@@ -43,25 +43,25 @@ export function AddLeadInline({ createLead }: AddLeadInlineProps) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h1 className="text-title">Leads</h1>
-        <Button className="h-9 px-3 text-sm" onClick={() => setIsOpen((prev) => !prev)}>
+    <div className="space-y-4">
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <h1 className="text-title min-w-0 shrink truncate">Leads</h1>
+        <Button className="h-10 min-h-10 min-w-[4.25rem] shrink-0 px-4 text-[0.875rem]" onClick={() => setIsOpen((prev) => !prev)}>
           Add
         </Button>
       </div>
 
       {isOpen ? (
-        <div className="space-y-1.5">
-          <form className="flex items-center gap-2" onSubmit={handleSubmit}>
+        <div className="space-y-2">
+          <form className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-center" onSubmit={handleSubmit}>
             <input
               autoFocus
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="Enter lead name"
-              className="h-11 w-full rounded-xl border border-[var(--border)] bg-transparent px-4 text-[0.95rem] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/90 focus:border-[var(--accent)] focus:outline-none"
+              className="h-11 min-h-11 w-full min-w-0 flex-1 rounded-[var(--radius-input)] border border-[var(--border)] bg-[var(--surface)] px-3.5 text-[0.875rem] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/80 focus:border-[var(--accent-strong)] focus:outline-none focus:ring-2 focus:ring-[#2460fa1f]"
             />
-            <Button type="submit" className="h-11 px-4" disabled={isPending}>
+            <Button type="submit" className="h-10 w-full shrink-0 px-4 sm:w-auto" disabled={isPending}>
               Save
             </Button>
           </form>
