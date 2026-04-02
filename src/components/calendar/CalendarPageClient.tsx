@@ -36,21 +36,6 @@ export function CalendarPageClient({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
-      <header className="shrink-0 pt-1">
-        <div className="flex min-w-0 justify-end">
-          <Button
-            type="button"
-            className="min-w-[4.25rem] shrink-0 px-5"
-            onClick={() => {
-              setView("calendar");
-              setNewEventOpenedAt(Date.now());
-            }}
-          >
-            Add
-          </Button>
-        </div>
-      </header>
-
       {newEventOpenedAt != null ? (
         <AddEventInline
           key={newEventOpenedAt}
@@ -88,7 +73,16 @@ export function CalendarPageClient({
       {view === "list" ? (
         <>
           <section className="flex shrink-0 flex-col space-y-5" aria-label="All events">
-            <p className="crm-section-label">All events</p>
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <p className="crm-section-label">All events</p>
+              <Button
+                type="button"
+                className="shrink-0 px-4"
+                onClick={() => setNewEventOpenedAt(Date.now())}
+              >
+                Add Event
+              </Button>
+            </div>
             {!listEvents.length ? (
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
                 No events
@@ -129,7 +123,7 @@ export function CalendarPageClient({
           className="min-h-0 min-w-0 flex-1"
           events={gridEvents}
           viewerEmail={viewerEmail}
-          createEvent={createEvent}
+          onAddEvent={() => setNewEventOpenedAt(Date.now())}
         />
       )}
     </div>

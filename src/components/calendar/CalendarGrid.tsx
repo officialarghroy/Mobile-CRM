@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
-import { AddEventInline } from "@/components/calendar/AddEventInline";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 import { MonthChipScroller } from "@/components/calendar/MonthChipScroller";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
@@ -11,13 +10,11 @@ import { Button } from "@/components/ui/Button";
 
 export type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
 
-type CreateEventAction = (formData: FormData) => Promise<void>;
-
 type CalendarGridProps = {
   className?: string;
   events: CalendarGridEvent[];
   viewerEmail: string;
-  createEvent: CreateEventAction;
+  onAddEvent?: () => void;
 };
 
 function startOfMonth(d: Date): Date {
@@ -44,14 +41,12 @@ function clampDayInMonth(year: number, month: number, preferredDay: number): Dat
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 
-export function CalendarGrid({ className = "", events, viewerEmail, createEvent }: CalendarGridProps) {
+export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }: CalendarGridProps) {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const t = new Date();
     return new Date(t.getFullYear(), t.getMonth(), t.getDate());
   });
-  const [addEventOpen, setAddEventOpen] = useState(false);
-
   const applyVisibleMonth = useCallback((nextMonthStart: Date) => {
     const next = startOfMonth(nextMonthStart);
     setVisibleMonth(next);
@@ -153,9 +148,11 @@ export function CalendarGrid({ className = "", events, viewerEmail, createEvent 
         <Button type="button" variant="ghost" className="shrink-0 px-4" onClick={goToday}>
           Today
         </Button>
-        <Button type="button" className="shrink-0 px-4" onClick={() => setAddEventOpen(true)}>
-          Add event
-        </Button>
+        {onAddEvent ? (
+          <Button type="button" className="shrink-0 px-4" onClick={onAddEvent}>
+            Add Event
+          </Button>
+        ) : null}
       </div>
 
       <div className="shrink-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
@@ -238,14 +235,6 @@ export function CalendarGrid({ className = "", events, viewerEmail, createEvent 
         </div>
       ) : null}
 
-      {addEventOpen ? (
-        <AddEventInline
-          key={`${selectedDate.getTime()}-add`}
-          createEvent={createEvent}
-          defaultDate={selectedDate}
-          onClose={() => setAddEventOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

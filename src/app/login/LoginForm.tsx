@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { RiEyeLine, RiEyeOffLine } from "react-icons/ri";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 const fieldLabelClass = "mb-1.5 block text-sm font-normal text-[#64748b]";
@@ -32,6 +33,7 @@ function signInErrorMessage(error: { message?: string; status?: number; code?: s
 export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -82,16 +84,27 @@ export function LoginForm() {
         <label htmlFor="login-password" className={fieldLabelClass}>
           Password
         </label>
-        <input
-          id="login-password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="••••••••"
-          required
-          disabled={loading}
-          className={fieldInputClass}
-        />
+        <div className="relative">
+          <input
+            id="login-password"
+            name="password"
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            placeholder="••••••••"
+            required
+            disabled={loading}
+            className={`${fieldInputClass} pr-12`}
+          />
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6366f1] disabled:opacity-40"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <RiEyeOffLine className="h-5 w-5" aria-hidden /> : <RiEyeLine className="h-5 w-5" aria-hidden />}
+          </button>
+        </div>
       </div>
 
       {formError ? (

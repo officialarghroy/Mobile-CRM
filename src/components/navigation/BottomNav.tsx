@@ -23,7 +23,7 @@ export function BottomNav() {
         <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0.5 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           <Link
             href="/leads"
-            className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] py-2 text-[0.75rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${
+            className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] py-2 text-[0.8125rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${
               leadsActive
                 ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"
@@ -39,7 +39,7 @@ export function BottomNav() {
           </Link>
           <Link
             href="/calendar"
-            className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] py-2 text-[0.75rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${
+            className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-control)] py-2 text-[0.8125rem] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] ${
               calendarActive
                 ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)]"

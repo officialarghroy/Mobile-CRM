@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RiCloseLine } from "react-icons/ri";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { PasswordField } from "@/components/ui/PasswordField";
 
 export type CreateUserAction = (formData: FormData) => Promise<void>;
 
@@ -118,10 +119,17 @@ export function CreateUserModal({ open, onOpenChange, createUser }: CreateUserMo
                 ))}
               </select>
             </div>
-            <Input name="password" type="password" label="Password (min 8 characters)" autoComplete="new-password" required minLength={8} />
-            <Input
+            <PasswordField
+              id="create-user-password"
+              name="password"
+              label="Password (min 8 characters)"
+              autoComplete="new-password"
+              required
+              minLength={8}
+            />
+            <PasswordField
+              id="create-user-password-confirm"
               name="passwordConfirm"
-              type="password"
               label="Confirm password"
               autoComplete="new-password"
               required

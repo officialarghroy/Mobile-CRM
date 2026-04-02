@@ -1,0 +1,167 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useRef, useState, useTransition, type FormEvent } from "react";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { PasswordField } from "@/components/ui/PasswordField";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { setMyAvatarUrl, updateMyDisplayName, updateMyPassword } from "@/app/profile/actions";
+
+type ProfileFormProps = {
+  userId: string;
+  email: string;
+  initialDisplayName: string;
+  initialAvatarUrl: string | null;
+};
+
+export function ProfileForm({ userId, email, initialDisplayName, initialAvatarUrl }: ProfileFormProps) {
+  const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [pendingProfile, startProfile] = useTransition();
+  const [pendingPassword, startPassword] = useTransition();
+  const [pendingAvatar, startAvatar] = useTransition();
+
+  const handleProfileSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setProfileError(null);
+    setProfileMessage(null);
+    const fd = new FormData(e.currentTarget);
+    startProfile(async () => {
+      try {
+        await updateMyDisplayName(fd);
+        setProfileMessage("Saved");
+        router.refresh();
+      } catch (err) {
+        setProfileError(err instanceof Error ? err.message : "Could not save.");
+      }
+    });
+  };
+
+  const handlePasswordSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordMessage(null);
+    const fd = new FormData(e.currentTarget);
+    startPassword(async () => {
+      try {
+        await updateMyPassword(fd);
+        setPasswordMessage("Password updated");
+        e.currentTarget.reset();
+        router.refresh();
+      } catch (err) {
+        setPasswordError(err instanceof Error ? err.message : "Could not update password.");
+      }
+    });
+  };
+
+  const handleAvatarFile = (fileList: FileList | null) => {
+    const file = fileList?.[0];
+    if (!file || !file.type.startsWith("image/")) {
+      setUploadError("Choose an image file.");
+      return;
+    }
+    if (file.size > 2_000_000) {
+      setUploadError("Image must be under 2 MB.");
+      return;
+    }
+    setUploadError(null);
+    startAvatar(async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const ext = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
+        const path = `${userId}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+        if (upErr) {
+          throw new Error(upErr.message);
+        }
+        const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+        const publicUrl = data.publicUrl;
+        await setMyAvatarUrl(publicUrl);
+        setAvatarUrl(publicUrl);
+        router.refresh();
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Upload failed.");
+      }
+    });
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <Card className="flex flex-col gap-4">
+        <p className="crm-section-label">Photo</p>
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
+          <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-[var(--text-secondary)]">
+                {(initialDisplayName || email).slice(0, 2).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              onChange={(ev) => handleAvatarFile(ev.target.files)}
+            />
+            <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => fileRef.current?.click()} disabled={pendingAvatar}>
+              {pendingAvatar ? "Uploading…" : "Upload photo"}
+            </Button>
+            {uploadError ? <p className="crm-meta text-[var(--text-danger)]">{uploadError}</p> : null}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <p className="crm-section-label">Profile</p>
+        <p className="crm-meta text-[var(--text-secondary)]">Signed in as {email}</p>
+        <form className="flex flex-col gap-3" onSubmit={handleProfileSubmit}>
+          <Input name="displayName" label="Display name" defaultValue={initialDisplayName} autoComplete="name" />
+          {profileError ? (
+            <p className="crm-meta text-[var(--text-danger)]" role="alert">
+              {profileError}
+            </p>
+          ) : null}
+          {profileMessage ? <p className="crm-meta text-[var(--success)]">{profileMessage}</p> : null}
+          <Button type="submit" className="w-full" disabled={pendingProfile}>
+            {pendingProfile ? "Saving…" : "Save profile"}
+          </Button>
+        </form>
+      </Card>
+
+      <Card className="flex flex-col gap-3">
+        <p className="crm-section-label">Password</p>
+        <p className="crm-meta text-[var(--text-secondary)]">
+          Set a new password for your account. Use the eye icon to show or hide what you type.
+        </p>
+        <form className="flex flex-col gap-3" onSubmit={handlePasswordSubmit}>
+          <PasswordField name="newPassword" label="New password (min 8 characters)" autoComplete="new-password" required minLength={8} />
+          <PasswordField name="confirmPassword" label="Confirm new password" autoComplete="new-password" required minLength={8} />
+          {passwordError ? (
+            <p className="crm-meta text-[var(--text-danger)]" role="alert">
+              {passwordError}
+            </p>
+          ) : null}
+          {passwordMessage ? <p className="crm-meta text-[var(--success)]">{passwordMessage}</p> : null}
+          <Button type="submit" className="w-full" disabled={pendingPassword}>
+            {pendingPassword ? "Updating…" : "Update password"}
+          </Button>
+        </form>
+      </Card>
+    </div>
+  );
+}

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { BottomNav } from "@/components/navigation/BottomNav";
 import { HamburgerMenu } from "@/components/navigation/HamburgerMenu";
 import { ScrollToTopOnRouteChange } from "@/components/navigation/ScrollToTopOnRouteChange";
-import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { RegisterServiceWorker } from "@/components/pwa/RegisterServiceWorker";
 import { getMenuUserProfile } from "@/lib/menuUserProfile";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
@@ -77,22 +76,13 @@ export default async function RootLayout({
           <ScrollToTopOnRouteChange />
           {!isLoginRoute ? (
             <header className="sticky top-0 z-30 bg-[var(--bg)] pt-[env(safe-area-inset-top)]">
-              <div className="mx-auto flex h-14 min-h-14 w-full max-w-[480px] items-center justify-between gap-3 px-5">
+              <div className="mx-auto flex h-14 min-h-14 w-full max-w-[480px] items-center gap-3 px-5">
                 <HamburgerMenu initialProfile={menuUserProfile} />
-                {user ? (
-                  <span
-                    className="crm-meta max-w-[50%] truncate text-right"
-                    title={menuUserProfile.email ?? undefined}
-                  >
-                    {menuUserProfile.displayName}
-                  </span>
-                ) : null}
               </div>
             </header>
           ) : (
             <div className="shrink-0 pt-[env(safe-area-inset-top)]" aria-hidden />
           )}
-          <InstallPrompt />
           <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         </div>
         {!isLoginRoute ? <BottomNav /> : null}

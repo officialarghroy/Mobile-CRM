@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
+  RiAccountCircleLine,
   RiCalendarEventLine,
   RiCloseLine,
   RiLogoutBoxRLine,
@@ -119,54 +120,72 @@ export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
                   <Link
                     href="/leads"
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-[1.0625rem] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
                   >
-                    <RiTeamLine className="h-[1.375rem] w-[1.375rem] shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                    <RiTeamLine className="h-6 w-6 shrink-0 text-[var(--accent-strong)]" aria-hidden />
                     Leads
                   </Link>
                   <Link
                     href="/calendar"
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-[1.0625rem] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
                   >
-                    <RiCalendarEventLine className="h-[1.375rem] w-[1.375rem] shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                    <RiCalendarEventLine className="h-6 w-6 shrink-0 text-[var(--accent-strong)]" aria-hidden />
                     Calendar
                   </Link>
                   {initialProfile.hasSupabaseAuth ? (
-                    <Link
-                      href="/users"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-base font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
-                    >
-                      <RiUserLine className="h-[1.375rem] w-[1.375rem] shrink-0 text-[var(--accent-strong)]" aria-hidden />
-                      Users
-                    </Link>
+                    <>
+                      <Link
+                        href="/profile"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-[1.0625rem] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                      >
+                        <RiAccountCircleLine className="h-6 w-6 shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                        Profile
+                      </Link>
+                      <Link
+                        href="/users"
+                        onClick={() => setIsOpen(false)}
+                        className="flex items-center gap-3 rounded-lg px-3 py-3 text-[1.0625rem] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                      >
+                        <RiUserLine className="h-6 w-6 shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                        Users
+                      </Link>
+                    </>
                   ) : null}
                 </nav>
 
                 <footer className="mt-auto border-t border-[var(--border)] pt-4">
-                  <div className="flex items-center gap-3 py-3">
-                    <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-muted)] text-sm font-medium text-[var(--text-primary)]"
-                      aria-hidden
-                    >
-                      {initials}
-                    </div>
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                      <p className="truncate text-sm font-medium text-[var(--text-primary)]">{initialProfile.displayName}</p>
-                      <p className="crm-meta truncate">{emailLine ?? "—"}</p>
-                    </div>
-                    <span className="ml-auto shrink-0 text-xs font-semibold uppercase tracking-wide text-[var(--accent-strong)]">
-                      User
-                    </span>
-                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-start gap-3 rounded-lg py-3 transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)]"
+                  >
+                    {initialProfile.avatarUrl ? (
+                      <img
+                        src={initialProfile.avatarUrl}
+                        alt=""
+                        className="h-11 w-11 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--surface-muted)] text-[1.0625rem] font-medium text-[var(--text-primary)]"
+                        aria-hidden
+                      >
+                        {initials}
+                      </div>
+                    )}
+                    <p className="min-w-0 flex-1 pt-0.5 text-left text-[1rem] font-normal leading-snug text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                      {emailLine ?? "—"}
+                    </p>
+                  </Link>
 
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                    className="mt-2 flex w-full items-center justify-center gap-2.5 rounded-lg py-3 text-[1.0625rem] font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
                   >
-                    <RiLogoutBoxRLine className="h-[1.125rem] w-[1.125rem] shrink-0 text-[var(--text-secondary)]" aria-hidden />
+                    <RiLogoutBoxRLine className="h-5 w-5 shrink-0 text-[var(--text-secondary)]" aria-hidden />
                     Logout
                   </button>
                 </footer>

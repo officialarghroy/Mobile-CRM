@@ -89,7 +89,7 @@ body {
 
 /* Page + section hierarchy (CRM-wide) */
 .crm-page-title {
-  font-size: 1.25rem;
+  font-size: 1.3125rem;
   line-height: 1.3;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -97,7 +97,7 @@ body {
 }
 
 .crm-section-label {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -105,13 +105,13 @@ body {
 }
 
 .crm-meta {
-  font-size: 0.75rem;
-  line-height: 1.35;
+  font-size: 0.8125rem;
+  line-height: 1.4;
   color: var(--text-secondary);
 }
 
 .text-card-title {
-  font-size: 1.0625rem;
+  font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.28;
   letter-spacing: -0.01em;
@@ -119,7 +119,7 @@ body {
 }
 
 .text-card-meta {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.45;
   color: color-mix(in srgb, var(--text-secondary) 90%, transparent);
 }
