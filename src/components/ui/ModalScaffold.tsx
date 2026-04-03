@@ -36,7 +36,7 @@ export function ModalScaffold({ open, onBackdropClose, titleId, children }: Moda
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"
+        className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
         onClick={onBackdropClose}
       />
       <div className="pointer-events-none fixed inset-0 flex min-h-0 flex-col items-center justify-center px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">

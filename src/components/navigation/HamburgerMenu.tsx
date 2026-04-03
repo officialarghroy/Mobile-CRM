@@ -110,7 +110,7 @@ export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
                 type="button"
                 aria-label="Close navigation menu"
                 onClick={() => setIsOpen(false)}
-                className="absolute inset-0 z-0 bg-black/25 backdrop-blur-[1px]"
+                className="absolute inset-0 z-0 bg-black/25 backdrop-blur-[2px]"
               />
 
               <aside className="absolute inset-y-0 left-0 z-10 flex min-h-0 w-[min(100vw-3rem,280px)] max-w-[280px] flex-col border-r border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-elevated)]">

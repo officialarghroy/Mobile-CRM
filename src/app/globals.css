@@ -43,6 +43,11 @@ html {
   scrollbar-gutter: auto;
 }
 
+/* useBodyScrollLock: keep fixed chrome aligned with body padding when classic scrollbar disappears */
+html[data-scroll-locked] nav[aria-label="Bottom navigation"] {
+  right: var(--app-scrollbar-gutter, 0px);
+}
+
 body {
   background: var(--bg);
   color: var(--text-primary);
