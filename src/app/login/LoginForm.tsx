@@ -93,13 +93,13 @@ export function LoginForm() {
             placeholder="••••••••"
             required
             disabled={loading}
-            className={`${fieldInputClass} pr-12`}
+            className={`${fieldInputClass} pr-14`}
           />
           <button
             type="button"
             disabled={loading}
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6366f1] disabled:opacity-40"
+            className="absolute right-1 top-1/2 flex h-11 min-h-11 w-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-lg text-[#64748b] transition-colors hover:bg-[#f1f5f9] hover:text-[#0f172a] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6366f1] disabled:opacity-40"
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? <RiEyeOffLine className="h-5 w-5" aria-hidden /> : <RiEyeLine className="h-5 w-5" aria-hidden />}

@@ -36,9 +36,7 @@ export default async function ProfilePage() {
   return (
     <main className="flex w-full flex-1 flex-col py-5">
       <Container className="flex flex-1 flex-col space-y-5 pb-24">
-        <h1 className="crm-page-title pt-1">Profile</h1>
         <ProfileForm
-          userId={user.id}
           email={user.email}
           initialDisplayName={displayName}
           initialAvatarUrl={avatarUrl}

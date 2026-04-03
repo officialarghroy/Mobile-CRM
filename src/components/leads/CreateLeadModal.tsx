@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RiCloseLine } from "react-icons/ri";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ModalScaffold } from "@/components/ui/ModalScaffold";
 
 export type CreateLeadAction = (formData: FormData) => Promise<void>;
 
@@ -56,22 +57,12 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
     });
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-labelledby="create-lead-title">
-      <button
-        type="button"
-        aria-label="Close"
-        className="absolute inset-0 bg-black/30"
-        onClick={close}
-      />
-
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-5">
-        <div
-          className="pointer-events-auto w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-elevated)]"
-          onClick={(ev) => ev.stopPropagation()}
-        >
+    <ModalScaffold open={open} onBackdropClose={close} titleId="create-lead-title">
+      <div
+        className="pointer-events-auto mx-auto w-full max-w-md max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2.5rem))] overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-elevated)]"
+        onClick={(ev) => ev.stopPropagation()}
+      >
           <div className="mb-4 flex items-start justify-between gap-3">
             <h2 id="create-lead-title" className="text-xl font-semibold text-[var(--text-primary)]">
               Add lead
@@ -108,8 +99,7 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
               {isPending ? "Creating…" : "Create lead"}
             </Button>
           </form>
-        </div>
       </div>
-    </div>
+    </ModalScaffold>
   );
 }

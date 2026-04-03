@@ -6,17 +6,15 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { PasswordField } from "@/components/ui/PasswordField";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
-import { setMyAvatarUrl, updateMyDisplayName, updateMyPassword } from "@/app/profile/actions";
+import { removeMyAvatar, updateMyDisplayName, updateMyPassword, uploadMyAvatar } from "@/app/profile/actions";
 
 type ProfileFormProps = {
-  userId: string;
   email: string;
   initialDisplayName: string;
   initialAvatarUrl: string | null;
 };
 
-export function ProfileForm({ userId, email, initialDisplayName, initialAvatarUrl }: ProfileFormProps) {
+export function ProfileForm({ email, initialDisplayName, initialAvatarUrl }: ProfileFormProps) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
@@ -28,6 +26,7 @@ export function ProfileForm({ userId, email, initialDisplayName, initialAvatarUr
   const [pendingProfile, startProfile] = useTransition();
   const [pendingPassword, startPassword] = useTransition();
   const [pendingAvatar, startAvatar] = useTransition();
+  const [pendingRemoveAvatar, startRemoveAvatar] = useTransition();
 
   const handleProfileSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -75,23 +74,31 @@ export function ProfileForm({ userId, email, initialDisplayName, initialAvatarUr
     setUploadError(null);
     startAvatar(async () => {
       try {
-        const supabase = getSupabaseBrowserClient();
-        const ext = file.name.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "jpg";
-        const path = `${userId}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, {
-          upsert: true,
-          contentType: file.type,
-        });
-        if (upErr) {
-          throw new Error(upErr.message);
-        }
-        const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-        const publicUrl = data.publicUrl;
-        await setMyAvatarUrl(publicUrl);
-        setAvatarUrl(publicUrl);
+        const fd = new FormData();
+        fd.set("avatar", file);
+        const result = await uploadMyAvatar(fd);
+        setAvatarUrl(result.publicUrl);
         router.refresh();
       } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed.");
+        const raw = err instanceof Error ? err.message : "Upload failed.";
+        const friendly =
+          /bucket not found/i.test(raw)
+            ? "Photo storage is not ready. Add SUPABASE_SERVICE_ROLE_KEY to your server env and try again, or create an \"avatars\" bucket in Supabase."
+            : raw;
+        setUploadError(friendly);
+      }
+    });
+  };
+
+  const handleRemoveAvatar = () => {
+    setUploadError(null);
+    startRemoveAvatar(async () => {
+      try {
+        await removeMyAvatar();
+        setAvatarUrl(null);
+        router.refresh();
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : "Could not remove photo.");
       }
     });
   };
@@ -118,9 +125,28 @@ export function ProfileForm({ userId, email, initialDisplayName, initialAvatarUr
               className="hidden"
               onChange={(ev) => handleAvatarFile(ev.target.files)}
             />
-            <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={() => fileRef.current?.click()} disabled={pendingAvatar}>
-              {pendingAvatar ? "Uploading…" : "Upload photo"}
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full sm:w-auto"
+                onClick={() => fileRef.current?.click()}
+                disabled={pendingAvatar || pendingRemoveAvatar}
+              >
+                {pendingAvatar ? "Uploading…" : "Upload photo"}
+              </Button>
+              {avatarUrl ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-[var(--text-danger)] hover:bg-red-50 hover:text-red-700 sm:w-auto"
+                  onClick={handleRemoveAvatar}
+                  disabled={pendingAvatar || pendingRemoveAvatar}
+                >
+                  {pendingRemoveAvatar ? "Removing…" : "Remove photo"}
+                </Button>
+              ) : null}
+            </div>
             {uploadError ? <p className="crm-meta text-[var(--text-danger)]">{uploadError}</p> : null}
           </div>
         </div>

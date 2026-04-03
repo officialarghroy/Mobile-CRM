@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Kurale, Poppins } from "next/font/google";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { AppHeader } from "@/components/navigation/AppHeader";
 import { BottomNav } from "@/components/navigation/BottomNav";
-import { HamburgerMenu } from "@/components/navigation/HamburgerMenu";
 import { ScrollToTopOnRouteChange } from "@/components/navigation/ScrollToTopOnRouteChange";
 import { RegisterServiceWorker } from "@/components/pwa/RegisterServiceWorker";
 import { getMenuUserProfile } from "@/lib/menuUserProfile";
@@ -23,17 +23,34 @@ const kurale = Kurale({
 });
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#f3f4f7",
+  colorScheme: "light",
 };
+
+const appDescription = "Simple mobile CRM for managing leads and activity";
 
 export const metadata: Metadata = {
   title: "CRM",
-  description: "CRM PWA UI foundation",
+  description: appDescription,
+  applicationName: "CRM",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/icon-512.svg", sizes: "512x512", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/icon-192.svg", sizes: "192x192", type: "image/svg+xml" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "CRM",
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 
@@ -69,21 +86,17 @@ export default async function RootLayout({
         }`}
       >
         <div
-          className={`mx-auto flex min-h-dvh w-full flex-col ${
+          className={`mx-auto flex min-h-dvh w-full max-w-[480px] flex-col ${
             isLoginRoute ? "pb-[env(safe-area-inset-bottom)]" : "pb-[calc(5.25rem+env(safe-area-inset-bottom))]"
           }`}
         >
           <ScrollToTopOnRouteChange />
           {!isLoginRoute ? (
-            <header className="sticky top-0 z-30 bg-[var(--bg)] pt-[env(safe-area-inset-top)]">
-              <div className="mx-auto flex h-14 min-h-14 w-full max-w-[480px] items-center gap-3 px-5">
-                <HamburgerMenu initialProfile={menuUserProfile} />
-              </div>
-            </header>
+            <AppHeader initialProfile={menuUserProfile} />
           ) : (
             <div className="shrink-0 pt-[env(safe-area-inset-top)]" aria-hidden />
           )}
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden">{children}</div>
         </div>
         {!isLoginRoute ? <BottomNav /> : null}
         <RegisterServiceWorker />

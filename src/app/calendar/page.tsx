@@ -1,5 +1,6 @@
-import { Container } from "@/components/ui/Container";
+import { Suspense } from "react";
 import { CalendarPageClient } from "@/components/calendar/CalendarPageClient";
+import { Container } from "@/components/ui/Container";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createCalendarEvent, deleteCalendarEvent } from "./actions";
 
@@ -22,13 +23,13 @@ type ListEvent = {
 function formatTimeRange(startTime: string | null, endTime: string | null): string {
   if (!startTime && !endTime) return "Time not set";
   const start = startTime
-    ? new Date(startTime).toLocaleTimeString([], {
+    ? new Date(startTime).toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
       })
     : "TBD";
   const end = endTime
-    ? new Date(endTime).toLocaleTimeString([], {
+    ? new Date(endTime).toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
       })
@@ -76,14 +77,28 @@ export default async function CalendarPage() {
   return (
     <main className="flex min-h-dvh w-full flex-col overflow-x-hidden py-5">
       <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-24">
-        <CalendarPageClient
-          listEvents={listEvents}
-          gridEvents={gridEvents}
-          viewerEmail={viewerEmail}
-          createEvent={createCalendarEvent}
-          deleteEvent={deleteCalendarEvent}
-        />
+        <Suspense fallback={<CalendarPageViewFallback />}>
+          <CalendarPageClient
+            listEvents={listEvents}
+            gridEvents={gridEvents}
+            viewerEmail={viewerEmail}
+            createEvent={createCalendarEvent}
+            deleteEvent={deleteCalendarEvent}
+          />
+        </Suspense>
       </Container>
     </main>
+  );
+}
+
+function CalendarPageViewFallback() {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-5" aria-busy="true">
+      <div className="isolate flex shrink-0 flex-wrap gap-3">
+        <div className="h-11 w-[6.25rem] animate-pulse rounded-full bg-[var(--surface-muted)]" />
+        <div className="h-11 w-[6.25rem] animate-pulse rounded-full bg-[var(--surface-muted)]" />
+      </div>
+      <div className="min-h-[14rem] flex-1 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
+    </div>
   );
 }

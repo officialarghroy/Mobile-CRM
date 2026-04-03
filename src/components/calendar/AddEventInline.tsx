@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ModalScaffold } from "@/components/ui/ModalScaffold";
 
 type AddEventInlineProps = {
   createEvent: (formData: FormData) => Promise<void>;
@@ -29,12 +30,6 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
   const [endTime, setEndTime] = useState(() =>
     toDatetimeLocalValue(new Date(startOfDayAtNine(defaultDate).getTime() + 60 * 60 * 1000)),
   );
-
-  useEffect(() => {
-    setStartTime(toDatetimeLocalValue(startOfDayAtNine(defaultDate)));
-    setEndTime(toDatetimeLocalValue(new Date(startOfDayAtNine(defaultDate).getTime() + 60 * 60 * 1000)));
-    setTitle("");
-  }, [defaultDate]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -66,18 +61,11 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
   };
 
   return (
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-labelledby="add-event-calendar-title">
-      <button
-        type="button"
-        aria-label="Close"
-        className="absolute inset-0 bg-black/30"
-        onClick={onClose}
-      />
-      <div className="pointer-events-none fixed inset-0 flex items-center justify-center p-5">
-        <div
-          className="pointer-events-auto w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-elevated)]"
-          onClick={(e) => e.stopPropagation()}
-        >
+    <ModalScaffold open onBackdropClose={onClose} titleId="add-event-calendar-title">
+      <div
+        className="pointer-events-auto mx-auto w-full max-w-md max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2.5rem))] overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-elevated)]"
+        onClick={(e) => e.stopPropagation()}
+      >
           <h2 id="add-event-calendar-title" className="mb-3 text-xl font-semibold text-[var(--text-primary)]">
             New event
           </h2>
@@ -105,8 +93,7 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
               {isPending ? "Adding..." : "Save Event"}
             </Button>
           </form>
-        </div>
       </div>
-    </div>
+    </ModalScaffold>
   );
 }

@@ -20,9 +20,8 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
   const dayEvents = eventsForLocalDay(events, selectedDate);
   const placed = placeEventsForDay(selectedDate, dayEvents);
 
-  const weekdayShort = selectedDate
-    .toLocaleDateString(undefined, { weekday: "short" })
-    .toUpperCase();
+  /** Fixed English abbreviations: `toLocaleDateString(undefined)` differs between Node and browser. */
+  const weekdayShort = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][selectedDate.getDay()] ?? "—";
   const dayNum = selectedDate.getDate();
 
   const totalHeight = TIMELINE_HOURS * TIMELINE_HOUR_HEIGHT_PX;

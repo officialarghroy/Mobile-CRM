@@ -1,8 +1,6 @@
 import { Container } from "@/components/ui/Container";
-import { AddLeadInline } from "@/components/leads/AddLeadInline";
 import { LeadsListSection } from "@/components/leads/LeadsListSection";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
-import { createLead } from "./actions";
 
 type Lead = {
   id: string;
@@ -140,11 +138,7 @@ export default async function LeadsPage() {
 
   return (
     <main className="flex min-h-dvh w-full items-start py-5">
-      <Container className="space-y-5 pb-6">
-        <header className="pt-1">
-          <AddLeadInline createLead={createLead} />
-        </header>
-
+      <Container className="space-y-5 pb-24">
         <LeadsListSection leads={leads} />
       </Container>
     </main>

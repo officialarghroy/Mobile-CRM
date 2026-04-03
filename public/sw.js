@@ -1,23 +1,27 @@
-const CACHE_NAME = "crm-v1";
-const ESSENTIAL_ROUTES = ["/", "/leads", "/calendar"];
+/**
+ * Minimal PWA worker: parity with the browser tab when online.
+ * - No HTML precache (avoids stale / personalized documents).
+ * - No cache-first for Next.js chunks (avoids stale JS/CSS after deploys).
+ * - Navigations are network-only; offline falls back to a static shell page.
+ */
+const CACHE_NAME = "crm-pwa-shell-v2";
+const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/icon-192.svg", "/icon-512.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       try {
         const cache = await caches.open(CACHE_NAME);
-        for (const url of ESSENTIAL_ROUTES) {
+        for (const url of PRECACHE_URLS) {
           try {
-            const response = await fetch(url);
-            if (response.ok) {
-              await cache.put(url, response);
-            }
-          } catch (err) {
-            console.error("Failed to cache:", url, err);
+            const res = await fetch(url);
+            if (res.ok) await cache.put(url, res);
+          } catch (e) {
+            console.error("Precache miss:", url, e);
           }
         }
       } catch (err) {
-        console.error("Service worker install (cache open):", err);
+        console.error("Service worker install precache:", err);
       } finally {
         await self.skipWaiting();
       }
@@ -28,57 +32,24 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
-      const cacheKeys = await caches.keys();
-      await Promise.all(
-        cacheKeys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-          return Promise.resolve(false);
-        }),
-      );
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())));
       await self.clients.claim();
     })(),
   );
 });
 
-function isStaticAssetRequest(request) {
-  const destination = request.destination;
-  return destination === "style" || destination === "script" || destination === "image";
-}
-
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-
   if (request.method !== "GET") return;
 
   if (request.mode === "navigate") {
     event.respondWith(
-      (async () => {
-        try {
-          const networkResponse = await fetch(request);
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(request, networkResponse.clone());
-          return networkResponse;
-        } catch {
-          const cachedResponse = await caches.match(request);
-          if (cachedResponse) return cachedResponse;
-          return caches.match("/leads");
-        }
-      })(),
-    );
-    return;
-  }
-
-  if (isStaticAssetRequest(request)) {
-    event.respondWith(
-      (async () => {
-        const cachedResponse = await caches.match(request);
-        if (cachedResponse) return cachedResponse;
-
-        const networkResponse = await fetch(request);
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(request, networkResponse.clone());
-        return networkResponse;
-      })(),
+      fetch(request).catch(async () => {
+        const fallback = await caches.match("/offline.html");
+        if (fallback) return fallback;
+        return new Response("Offline", { status: 503, statusText: "Service Unavailable" });
+      }),
     );
   }
 });

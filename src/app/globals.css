@@ -39,7 +39,8 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
-  scrollbar-gutter: stable;
+  /* stable reserves a permanent gutter and skews optical centering of mx-auto columns on some viewports */
+  scrollbar-gutter: auto;
 }
 
 body {

@@ -1,3 +1,7 @@
+import { EmailTwoLines } from "@/components/ui/EmailTwoLines";
+import { usersTableEmailColumnClass } from "@/components/user/usersTableLayout";
+import { formatRoleFirstSegment, splitRoleForDisplay } from "@/lib/formatRoleDisplay";
+
 export type TeamMemberRow = {
   user_id: string;
   display_name: string;
@@ -9,22 +13,59 @@ type TeamMemberRowsProps = {
   rows: TeamMemberRow[];
 };
 
+function RoleCell({ role }: { role: string }) {
+  const { line1, line2 } = splitRoleForDisplay(role);
+  const top = formatRoleFirstSegment(line1);
+  return (
+    <div
+      className="inline-block max-w-full text-right [direction:ltr] [unicode-bidi:isolate]"
+      title={role}
+    >
+      <span className="block">{top}</span>
+      {line2 != null ? <span className="block normal-case">{line2.toLowerCase()}</span> : null}
+    </div>
+  );
+}
+
 export function TeamMemberRows({ rows }: TeamMemberRowsProps) {
   return (
-    <>
-      {rows.map((row) => (
-        <div
-          key={row.user_id}
-          role="row"
-          className="grid cursor-default grid-cols-[1fr_1fr_minmax(5rem,auto)] gap-3 border-b border-[var(--border)] py-4 px-5 text-sm last:border-b-0 hover:bg-[var(--surface-muted)]"
-        >
-          <span className="min-w-0 truncate text-[var(--text-primary)]">{row.display_name}</span>
-          <span className="min-w-0 text-left whitespace-normal [overflow-wrap:anywhere] text-[var(--text-secondary)]">
-            {row.email || "—"}
-          </span>
-          <span className="min-w-0 shrink-0 text-right capitalize text-[var(--text-secondary)]">{row.role}</span>
-        </div>
-      ))}
-    </>
+    <tbody>
+      {rows.length === 0 ? (
+        <tr>
+          <td
+            colSpan={3}
+            className="border-b border-[var(--border)] px-5 py-4 text-sm text-[var(--text-secondary)]"
+          >
+            No team members found.
+          </td>
+        </tr>
+      ) : (
+        rows.map((row) => (
+          <tr
+            key={row.user_id}
+            className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface-muted)]"
+          >
+            <td className="min-w-0 px-4 py-3 align-top break-words text-left text-sm font-medium text-[var(--text-primary)] sm:py-3.5 sm:truncate sm:break-normal">
+              {row.display_name}
+            </td>
+            <td className={`py-3 align-top text-sm text-[var(--text-secondary)] sm:py-3.5 ${usersTableEmailColumnClass}`}>
+              {row.email ? (
+                <EmailTwoLines
+                  email={row.email}
+                  align="start"
+                  fullWidth
+                  className="text-[0.8125rem] leading-snug text-[var(--text-secondary)] sm:text-sm sm:leading-normal"
+                />
+              ) : (
+                "—"
+              )}
+            </td>
+            <td className="min-w-0 px-4 py-3 align-top text-right text-[0.75rem] leading-snug text-[var(--text-secondary)] sm:py-3.5 sm:text-sm sm:leading-normal">
+              <RoleCell role={row.role} />
+            </td>
+          </tr>
+        ))
+      )}
+    </tbody>
   );
 }

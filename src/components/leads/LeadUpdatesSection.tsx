@@ -116,7 +116,7 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, viewerEma
               <div className="flex items-start justify-between gap-3 pl-1">
                 <div className="min-w-0 flex-1">
                   <p
-                    className={`text-sm font-semibold leading-snug ${
+                    className={`break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere] ${
                       index === 0 ? "text-[var(--text-primary)]" : "text-[var(--text-primary)]/95"
                     }`}
                   >

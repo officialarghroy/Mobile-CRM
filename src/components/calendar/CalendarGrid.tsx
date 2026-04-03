@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 import { MonthChipScroller } from "@/components/calendar/MonthChipScroller";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
-import { dayKey, parseEventStart } from "@/components/calendar/dayTimelineUtils";
+import { dayKey } from "@/components/calendar/dayTimelineUtils";
 import { Button } from "@/components/ui/Button";
 
 export type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
@@ -39,7 +39,11 @@ function clampDayInMonth(year: number, month: number, preferredDay: number): Dat
   return new Date(year, month, d);
 }
 
-const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }: CalendarGridProps) {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
@@ -98,25 +102,24 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
     return { weeks: w, unscheduled: unsched };
   }, [visibleMonth, events]);
 
-  const eventsByDay = useMemo(() => {
-    const map = new Map<string, CalendarGridEvent[]>();
-    for (const e of events) {
-      const day = parseEventStart(e.start_time);
-      if (!day) continue;
-      const key = dayKey(day);
-      const list = map.get(key) ?? [];
-      list.push(e);
-      map.set(key, list);
-    }
-    return map;
-  }, [events]);
+  const monthTitle = visibleMonth.toLocaleString("en-US", { month: "long", year: "numeric" });
 
-  const monthTitle = visibleMonth.toLocaleString(undefined, { month: "long", year: "numeric" });
+  const [today, setToday] = useState(() => startOfLocalDay(new Date()));
 
-  const today = (() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), n.getDate());
-  })();
+  useEffect(() => {
+    const syncToday = () => {
+      const next = startOfLocalDay(new Date());
+      setToday((prev) => (sameLocalDay(prev, next) ? prev : next));
+    };
+    const intervalId = window.setInterval(syncToday, 60_000);
+    document.addEventListener("visibilitychange", syncToday);
+    window.addEventListener("focus", syncToday);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", syncToday);
+      window.removeEventListener("focus", syncToday);
+    };
+  }, []);
 
   return (
     <div className={`flex min-h-0 min-w-0 flex-1 flex-col gap-5 ${className}`.trim()}>
@@ -157,8 +160,8 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
 
       <div className="shrink-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
         <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--surface-muted)] py-1">
-          {WEEKDAY_LETTERS.map((d, i) => (
-            <div key={`${d}-${i}`} className="py-1 text-center text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+          {WEEKDAY_LABELS.map((d) => (
+            <div key={d} className="py-1 text-center text-[0.6rem] font-semibold tabular-nums tracking-tight text-[var(--text-secondary)] sm:text-[0.65rem]">
               {d}
             </div>
           ))}
@@ -170,8 +173,6 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
                 return <div key={`empty-${wi}-${di}`} className="min-h-[3rem] bg-[var(--bg)]/40" />;
               }
               const key = dayKey(day);
-              const dayEventList = eventsByDay.get(key) ?? [];
-              const hasEvents = dayEventList.length > 0;
               const isToday = sameLocalDay(day, today);
               const isSelected = sameLocalDay(day, selectedDate);
 
@@ -196,7 +197,7 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
                       {day.getDate()}
                     </span>
                     <span
-                      className={`h-1 w-1 rounded-full ${hasEvents ? "bg-[var(--success)]" : "bg-transparent"}`}
+                      className={`h-1 w-1 shrink-0 rounded-full ${isToday ? "bg-[var(--success)]" : "bg-transparent"}`}
                       aria-hidden
                     />
                   </button>

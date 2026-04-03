@@ -90,9 +90,12 @@ export function placeEventsForDay(
   return placed;
 }
 
+/**
+ * Stable across SSR and the browser. Do not use `toLocaleTimeString(undefined)` here:
+ * Node and the client often disagree (e.g. "12 AM" vs "00") and cause hydration errors.
+ */
 export function formatHourLabel(hour: number): string {
-  return new Date(2000, 0, 1, hour, 0, 0, 0).toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: undefined,
-  });
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  const suffix = hour < 12 ? "AM" : "PM";
+  return `${h12} ${suffix}`;
 }

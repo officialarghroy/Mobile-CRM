@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import type { ReadonlyURLSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
-import { Button } from "@/components/ui/Button";
 import { CalendarGrid, type CalendarGridEvent } from "@/components/calendar/CalendarGrid";
+import { Button } from "@/components/ui/Button";
 
 type ListEvent = {
   id: string;
@@ -24,6 +26,10 @@ type CalendarPageClientProps = {
   deleteEvent: DeleteEventAction;
 };
 
+function viewFromSearchParams(searchParams: ReadonlyURLSearchParams): "list" | "calendar" {
+  return searchParams.get("view") === "calendar" ? "calendar" : "list";
+}
+
 export function CalendarPageClient({
   listEvents,
   gridEvents,
@@ -31,8 +37,30 @@ export function CalendarPageClient({
   createEvent,
   deleteEvent,
 }: CalendarPageClientProps) {
-  const [view, setView] = useState<"list" | "calendar">("list");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const view = viewFromSearchParams(searchParams);
   const [newEventOpenedAt, setNewEventOpenedAt] = useState<number | null>(null);
+
+  const setCalendarView = useCallback(
+    (next: "list" | "calendar") => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "calendar") {
+        params.set("view", "calendar");
+      } else {
+        params.delete("view");
+      }
+      const q = params.toString();
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const activeSegment =
+    "border border-transparent bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)]";
+  const inactiveSegment =
+    "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5">
@@ -45,25 +73,21 @@ export function CalendarPageClient({
         />
       ) : null}
 
-      <div className="flex shrink-0 flex-wrap gap-3">
+      <div className="isolate flex shrink-0 flex-wrap gap-3">
         <button
           type="button"
-          onClick={() => setView("list")}
+          onClick={() => setCalendarView("list")}
           className={`inline-flex h-11 min-h-11 items-center rounded-full px-5 text-sm font-medium transition-colors ${
-            view === "list"
-              ? "bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)]"
-              : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            view === "list" ? activeSegment : inactiveSegment
           }`}
         >
           Events
         </button>
         <button
           type="button"
-          onClick={() => setView("calendar")}
+          onClick={() => setCalendarView("calendar")}
           className={`inline-flex h-11 min-h-11 items-center rounded-full px-5 text-sm font-medium transition-colors ${
-            view === "calendar"
-              ? "bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)]"
-              : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            view === "calendar" ? activeSegment : inactiveSegment
           }`}
         >
           Calendar
@@ -97,15 +121,14 @@ export function CalendarPageClient({
                     }`}
                   >
                     <div className="min-w-0 flex-1 px-4 py-4 pl-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-card-title truncate">{event.title}</p>
-                          <p className="text-card-meta mt-1">{event.time}</p>
-                        </div>
-                        <p className="crm-meta shrink-0 pt-0.5 text-right font-medium text-[var(--text-tertiary)]">
-                          {event.user}
-                        </p>
-                      </div>
+                      <p className="text-card-title [overflow-wrap:anywhere]">{event.title}</p>
+                      <p
+                        className="crm-meta mt-1 min-w-0 truncate font-medium text-[var(--text-tertiary)]"
+                        title={event.user}
+                      >
+                        {event.user}
+                      </p>
+                      <p className="text-card-meta mt-1">{event.time}</p>
                     </div>
                     <form action={deleteEvent.bind(null, event.id)} className="flex shrink-0 items-center border-l border-[var(--border)] px-2">
                       <Button type="submit" variant="ghost" className="h-9 min-h-9 rounded-full px-3 text-sm text-[var(--text-secondary)]">
