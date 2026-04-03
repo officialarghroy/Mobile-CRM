@@ -17,9 +17,16 @@ type LeadUpdatesSectionProps = {
   initialUpdates: UpdateCardData[];
   createLeadUpdate: (formData: FormData) => Promise<void>;
   viewerEmail: string;
+  /** When false, activity history still shows but adding updates is hidden (e.g. Recently deleted). */
+  allowAddUpdate?: boolean;
 };
 
-export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, viewerEmail }: LeadUpdatesSectionProps) {
+export function LeadUpdatesSection({
+  initialUpdates,
+  createLeadUpdate,
+  viewerEmail,
+  allowAddUpdate = true,
+}: LeadUpdatesSectionProps) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
   const [updates, setUpdates] = useState<UpdateCardData[]>(initialUpdates);
@@ -78,26 +85,30 @@ export function LeadUpdatesSection({ initialUpdates, createLeadUpdate, viewerEma
     <div className="flex flex-col space-y-5">
       <p className="crm-section-label">Activity</p>
 
-      <Card className="flex flex-col gap-3 border-[#d4e2fc] bg-[var(--surface-accent)]">
-        <p className="crm-meta leading-snug">Add a note visible on this record.</p>
-        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          <label htmlFor="lead-update" className="sr-only">
-            Add update
-          </label>
-          <textarea
-            id="lead-update"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="What happened? (e.g. visited store, spoke to client...)"
-            rows={4}
-            className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]"
-          />
-          <Button type="submit" className="w-full" disabled={isPending || !draft.trim()}>
-            {isPending ? "Adding..." : "Save Update"}
-          </Button>
-          {showSaved ? <p className="crm-meta">Saved</p> : null}
-        </form>
-      </Card>
+      {allowAddUpdate ? (
+        <Card className="flex flex-col gap-3 border-[#d4e2fc] bg-[var(--surface-accent)]">
+          <p className="crm-meta leading-snug">Add a note visible on this record.</p>
+          <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+            <label htmlFor="lead-update" className="sr-only">
+              Add update
+            </label>
+            <textarea
+              id="lead-update"
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              placeholder="What happened? (e.g. visited store, spoke to client...)"
+              rows={4}
+              className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]"
+            />
+            <Button type="submit" className="w-full" disabled={isPending || !draft.trim()}>
+              {isPending ? "Adding..." : "Save Update"}
+            </Button>
+            {showSaved ? <p className="crm-meta">Saved</p> : null}
+          </form>
+        </Card>
+      ) : (
+        <p className="text-sm text-[var(--text-secondary)]">Activity is read-only while this lead is in Recently deleted.</p>
+      )}
 
       <section className="flex flex-col space-y-5 pb-2" aria-label="Activity history">
         {!updates.length ? (

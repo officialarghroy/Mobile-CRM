@@ -1,5 +1,8 @@
-import { Container } from "@/components/ui/Container";
+import { Suspense } from "react";
 import { LeadsListSection } from "@/components/leads/LeadsListSection";
+import { LeadsListSkeleton } from "@/components/leads/LeadsListSkeleton";
+import { Container } from "@/components/ui/Container";
+import { isMissingDeletedAtColumnError } from "@/lib/leadsSoftDeleteSupport";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 type Lead = {
@@ -33,8 +36,6 @@ type LeadCardData = {
   timestamp: string;
 };
 
-export const dynamic = "force-dynamic";
-
 function formatTimestamp(createdAt: string): string {
   const date = new Date(createdAt);
   const now = new Date();
@@ -66,18 +67,47 @@ function formatTimestamp(createdAt: string): string {
 type SupabaseError = {
   code?: string;
   message?: string;
+  details?: string;
 };
 
-export default async function LeadsPage() {
+function logFetchLeadsError(error: unknown) {
+  if (error && typeof error === "object" && "message" in error) {
+    const e = error as SupabaseError;
+    console.error("Failed to fetch leads:", e.message, e.code ?? "", e.details ?? "");
+    return;
+  }
+  if (error instanceof Error) {
+    console.error("Failed to fetch leads:", error.message);
+    return;
+  }
+  console.error("Failed to fetch leads:", error);
+}
+
+async function LeadsPageContent() {
   const supabase = await createSupabaseServerClient();
 
   let leads: LeadCardData[] = [];
 
   try {
-    const { data, error } = await supabase
+    const leadsSelect = "id, name, business, address, created_at, type";
+
+    let { data, error } = await supabase
       .from("leads")
-      .select("id, name, business, address, created_at, type")
+      .select(leadsSelect)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
+
+    if (error) {
+      const supabaseError = error as SupabaseError;
+      if (isMissingDeletedAtColumnError(supabaseError)) {
+        const retry = await supabase
+          .from("leads")
+          .select(leadsSelect)
+          .order("created_at", { ascending: false });
+        data = retry.data;
+        error = retry.error;
+      }
+    }
 
     if (error) {
       const supabaseError = error as SupabaseError;
@@ -133,13 +163,19 @@ export default async function LeadsPage() {
       });
     }
   } catch (error) {
-    console.error("Failed to fetch leads:", error);
+    logFetchLeadsError(error);
   }
 
+  return <LeadsListSection leads={leads} />;
+}
+
+export default function LeadsPage() {
   return (
     <main className="flex min-h-dvh w-full items-start py-5">
       <Container className="space-y-5 pb-24">
-        <LeadsListSection leads={leads} />
+        <Suspense fallback={<LeadsListSkeleton />}>
+          <LeadsPageContent />
+        </Suspense>
       </Container>
     </main>
   );

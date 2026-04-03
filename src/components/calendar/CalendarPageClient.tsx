@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
 import { CalendarGrid, type CalendarGridEvent } from "@/components/calendar/CalendarGrid";
 import { Button } from "@/components/ui/Button";
@@ -37,24 +37,26 @@ export function CalendarPageClient({
   createEvent,
   deleteEvent,
 }: CalendarPageClientProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const view = viewFromSearchParams(searchParams);
+  const [view, setView] = useState<"list" | "calendar">(() => viewFromSearchParams(searchParams));
   const [newEventOpenedAt, setNewEventOpenedAt] = useState<number | null>(null);
 
   const setCalendarView = useCallback(
     (next: "list" | "calendar") => {
-      const params = new URLSearchParams(searchParams.toString());
+      setView(next);
+      if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
       if (next === "calendar") {
         params.set("view", "calendar");
       } else {
         params.delete("view");
       }
       const q = params.toString();
-      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+      const path = pathname || window.location.pathname;
+      window.history.replaceState(window.history.state, "", q ? `${path}?${q}` : path);
     },
-    [pathname, router, searchParams],
+    [pathname],
   );
 
   const activeSegment =
@@ -94,61 +96,66 @@ export function CalendarPageClient({
         </button>
       </div>
 
-      {view === "list" ? (
-        <>
-          <section className="flex shrink-0 flex-col space-y-5" aria-label="All events">
-            <div className="flex min-w-0 items-center justify-between gap-3">
-              <p className="crm-section-label">All events</p>
-              <Button
-                type="button"
-                className="shrink-0 px-4"
-                onClick={() => setNewEventOpenedAt(Date.now())}
+      <section
+        className={`flex shrink-0 flex-col space-y-5 ${view !== "list" ? "hidden" : ""}`}
+        aria-hidden={view !== "list"}
+        aria-label="All events"
+      >
+        <div className="flex min-w-0 items-center justify-between gap-3">
+          <p className="crm-section-label">All events</p>
+          <Button
+            type="button"
+            className="shrink-0 px-4"
+            onClick={() => setNewEventOpenedAt(Date.now())}
+          >
+            Add Event
+          </Button>
+        </div>
+        {!listEvents.length ? (
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+            No events
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+            {listEvents.map((event) => (
+              <div
+                key={event.id}
+                className={`flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] bg-[var(--surface)] last:border-b-0 ${
+                  event.mine ? "border-l-[var(--accent-strong)]" : "border-l-[#94a3b8]"
+                }`}
               >
-                Add Event
-              </Button>
-            </div>
-            {!listEvents.length ? (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-                No events
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-                {listEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] bg-[var(--surface)] last:border-b-0 ${
-                      event.mine ? "border-l-[var(--accent-strong)]" : "border-l-[#94a3b8]"
-                    }`}
+                <div className="min-w-0 flex-1 px-4 py-4 pl-5">
+                  <p className="text-card-title [overflow-wrap:anywhere]">{event.title}</p>
+                  <p
+                    className="crm-meta mt-1 min-w-0 truncate font-medium text-[var(--text-tertiary)]"
+                    title={event.user}
                   >
-                    <div className="min-w-0 flex-1 px-4 py-4 pl-5">
-                      <p className="text-card-title [overflow-wrap:anywhere]">{event.title}</p>
-                      <p
-                        className="crm-meta mt-1 min-w-0 truncate font-medium text-[var(--text-tertiary)]"
-                        title={event.user}
-                      >
-                        {event.user}
-                      </p>
-                      <p className="text-card-meta mt-1">{event.time}</p>
-                    </div>
-                    <form action={deleteEvent.bind(null, event.id)} className="flex shrink-0 items-center border-l border-[var(--border)] px-2">
-                      <Button type="submit" variant="ghost" className="h-9 min-h-9 rounded-full px-3 text-sm text-[var(--text-secondary)]">
-                        Delete
-                      </Button>
-                    </form>
-                  </div>
-                ))}
+                    {event.user}
+                  </p>
+                  <p className="text-card-meta mt-1">{event.time}</p>
+                </div>
+                <form action={deleteEvent.bind(null, event.id)} className="flex shrink-0 items-center border-l border-[var(--border)] px-2">
+                  <Button type="submit" variant="ghost" className="h-9 min-h-9 rounded-full px-3 text-sm text-[var(--text-secondary)]">
+                    Delete
+                  </Button>
+                </form>
               </div>
-            )}
-          </section>
-        </>
-      ) : (
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div
+        className={`min-h-0 min-w-0 flex-1 flex flex-col ${view !== "calendar" ? "hidden" : ""}`}
+        aria-hidden={view !== "calendar"}
+      >
         <CalendarGrid
           className="min-h-0 min-w-0 flex-1"
           events={gridEvents}
           viewerEmail={viewerEmail}
           onAddEvent={() => setNewEventOpenedAt(Date.now())}
         />
-      )}
+      </div>
     </div>
   );
 }

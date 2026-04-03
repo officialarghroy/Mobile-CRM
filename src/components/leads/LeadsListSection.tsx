@@ -36,40 +36,42 @@ export function LeadsListSection({ leads }: LeadsListSectionProps) {
 
   return (
     <section className="flex flex-col space-y-4" aria-label="Leads list">
-      <div className="flex flex-wrap gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-        <button
-          type="button"
-          onClick={() => setFilter("all")}
-          className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            filter === "all"
-              ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-              : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-          }`}
-        >
-          All
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("lead")}
-          className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            filter === "lead"
-              ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-              : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-          }`}
-        >
-          Leads
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("client")}
-          className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-            filter === "client"
-              ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-              : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-          }`}
-        >
-          Clients
-        </button>
+      <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              filter === "all"
+                ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            }`}
+          >
+            All
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("lead")}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              filter === "lead"
+                ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            }`}
+          >
+            Leads
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("client")}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              filter === "client"
+                ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+            }`}
+          >
+            Clients
+          </button>
+        </div>
       </div>
 
       {!filteredLeads.length ? (

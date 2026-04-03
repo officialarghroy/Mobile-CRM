@@ -1,11 +1,31 @@
-import { RiArrowDownSLine, RiDeleteBinLine } from "react-icons/ri";
+import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { LeadUpdatesSection, type UpdateCardData } from "@/components/leads/LeadUpdatesSection";
-import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { DeleteLeadSection } from "@/components/leads/DeleteLeadSection";
+import { RestoreLeadButton } from "@/components/leads/RestoreLeadButton";
+import { LeadDetailContactForm } from "@/components/leads/LeadDetailContactForm";
+import { isMissingDeletedAtColumnError, isMissingExtendedLeadColumnsError } from "@/lib/leadsSoftDeleteSupport";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
-import { createLeadUpdate, deleteLead, updateLead } from "./actions";
+import { createLeadUpdate, updateLead } from "./actions";
+
+type SupabaseError = {
+  code?: string;
+  message?: string;
+  details?: string;
+};
+
+function logLeadDetailSupabaseError(context: string, error: unknown) {
+  if (error && typeof error === "object" && "message" in error) {
+    const e = error as SupabaseError;
+    console.error(context, e.message, e.code ?? "", e.details ?? "");
+    return;
+  }
+  if (error instanceof Error) {
+    console.error(context, error.message);
+    return;
+  }
+  console.error(context, error);
+}
 
 type LeadUpdate = {
   id: string;
@@ -76,11 +96,37 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   let leadBusiness = "";
   let leadAddress = "";
   let leadType: "lead" | "client" = "lead";
+  let leadEmail = "";
+  let leadPhone = "";
+  let leadEquipmentBrand = "";
+  let leadEquipmentModel = "";
+  let leadBrandModel = "";
+  let leadIssueDescription = "";
+  let deletedAt: string | null = null;
   let updates: UpdateCardData[] = [];
+
+  const leadExtendedSelect =
+    "name, business, address, type, deleted_at, email, phone, equipment_brand, equipment_model, brand_model, issue_description";
+  const leadExtendedNoSoftSelect =
+    "name, business, address, type, email, phone, equipment_brand, equipment_model, brand_model, issue_description";
+  const leadBasicSoftSelect = "name, business, address, type, deleted_at";
+  const leadBasicSelect = "name, business, address, type";
 
   try {
     const [{ data: leadData, error: leadError }, { data: updatesData, error: updatesError }] = await Promise.all([
-      supabase.from("leads").select("name, business, address, type").eq("id", leadId).single(),
+      (async () => {
+        let r = await supabase.from("leads").select(leadExtendedSelect).eq("id", leadId).single();
+        if (r.error && isMissingDeletedAtColumnError(r.error as SupabaseError)) {
+          r = await supabase.from("leads").select(leadExtendedNoSoftSelect).eq("id", leadId).single();
+        }
+        if (r.error && isMissingExtendedLeadColumnsError(r.error as SupabaseError)) {
+          r = await supabase.from("leads").select(leadBasicSoftSelect).eq("id", leadId).single();
+          if (r.error && isMissingDeletedAtColumnError(r.error as SupabaseError)) {
+            r = await supabase.from("leads").select(leadBasicSelect).eq("id", leadId).single();
+          }
+        }
+        return r;
+      })(),
       supabase
         .from("lead_updates")
         .select("id, content, created_at, created_by")
@@ -89,15 +135,35 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     ]);
 
     if (leadError) {
-      console.error("Failed to fetch lead:", leadError);
+      if (leadError.code !== "PGRST116") {
+        logLeadDetailSupabaseError("Failed to fetch lead:", leadError);
+      }
     } else if (leadData) {
-      leadName = leadData.name || leadName;
-      leadBusiness = leadData.business || "";
-      leadAddress = leadData.address || "";
+      const row = leadData as {
+        name: string;
+        business: string | null;
+        address: string | null;
+        type: string | null;
+        deleted_at?: string | null;
+        email?: string | null;
+        phone?: string | null;
+        equipment_brand?: string | null;
+        equipment_model?: string | null;
+        brand_model?: string | null;
+        issue_description?: string | null;
+      };
+      leadName = row.name || leadName;
+      leadBusiness = row.business || "";
+      leadAddress = row.address || "";
       leadType =
-        typeof leadData.type === "string" && leadData.type.trim().toLowerCase() === "client"
-          ? "client"
-          : "lead";
+        typeof row.type === "string" && row.type.trim().toLowerCase() === "client" ? "client" : "lead";
+      deletedAt = typeof row.deleted_at === "string" ? row.deleted_at : null;
+      leadEmail = typeof row.email === "string" ? row.email : "";
+      leadPhone = typeof row.phone === "string" ? row.phone : "";
+      leadEquipmentBrand = typeof row.equipment_brand === "string" ? row.equipment_brand : "";
+      leadEquipmentModel = typeof row.equipment_model === "string" ? row.equipment_model : "";
+      leadBrandModel = typeof row.brand_model === "string" ? row.brand_model : "";
+      leadIssueDescription = typeof row.issue_description === "string" ? row.issue_description : "";
     }
 
     if (updatesError) {
@@ -112,71 +178,88 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       author: update.created_by || "Unknown",
     }));
   } catch (error) {
-    console.error("Failed to fetch lead updates:", error);
+    logLeadDetailSupabaseError("Failed to fetch lead updates:", error);
   }
 
-  const contactFormKey = [leadId, leadType, leadName, leadBusiness, leadAddress].join("\u001f");
+  const contactFormKey = [
+    leadId,
+    leadType,
+    leadName,
+    leadBusiness,
+    leadAddress,
+    leadEmail,
+    leadPhone,
+    leadEquipmentBrand,
+    leadEquipmentModel,
+    leadBrandModel,
+    leadIssueDescription,
+  ].join("\u001f");
+
+  const contactValues = {
+    name: leadName,
+    business: leadBusiness,
+    address: leadAddress,
+    type: leadType,
+    email: leadEmail,
+    phone: leadPhone,
+    equipmentBrand: leadEquipmentBrand,
+    equipmentModel: leadEquipmentModel,
+    brandModel: leadBrandModel,
+    issueDescription: leadIssueDescription,
+  };
+
+  const isDeleted = Boolean(deletedAt);
 
   return (
     <main className="flex w-full flex-1 flex-col py-5">
       <Container className="flex flex-1 flex-col space-y-5 pb-24">
-        <p className="crm-section-label pt-1">Contact</p>
-        <Card className="flex flex-col gap-3">
-          <form
-            key={contactFormKey}
-            action={updateLead.bind(null, leadId)}
-            className="flex flex-col gap-3"
+        {isDeleted ? (
+          <div
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+            role="status"
           >
-            <Input name="name" label="Name" defaultValue={leadName || ""} />
-            <Input name="business" label="Business" defaultValue={leadBusiness || ""} />
-            <Input name="address" label="Address" defaultValue={leadAddress || ""} />
+            <p className="font-semibold">Recently deleted</p>
+            <p className="mt-1 text-amber-900/90">
+              This lead is not on your main list. Restore it anytime, or remove it forever from{" "}
+              <Link href="/leads/deleted" className="font-semibold text-[var(--accent-strong)] underline-offset-2 hover:underline">
+                Recently deleted
+              </Link>
+              .
+            </p>
+            {deletedAt ? (
+              <p className="crm-meta mt-2 text-amber-900/80">Deleted {formatFullTimestamp(deletedAt)}</p>
+            ) : null}
+          </div>
+        ) : null}
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="lead-type" className="text-sm font-medium text-[var(--text-primary)]">
-                Type
-              </label>
-              <div className="relative">
-                <select
-                  id="lead-type"
-                  name="type"
-                  defaultValue={leadType}
-                  className="h-11 min-h-11 w-full cursor-pointer appearance-none rounded-lg border border-[var(--border)] bg-[var(--surface)] py-0 pl-4 pr-11 text-sm text-[var(--text-primary)] outline-none transition-colors duration-150 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f]"
-                >
-                  <option value="lead">Lead</option>
-                  <option value="client">Client</option>
-                </select>
-                <RiArrowDownSLine
-                  className="pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-[var(--text-secondary)]"
-                  aria-hidden
-                />
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full">
-              Save
-            </Button>
-          </form>
-        </Card>
+        <p className="crm-section-label pt-1">Lead details</p>
+        <LeadDetailContactForm
+          formKey={contactFormKey}
+          readOnly={isDeleted}
+          values={contactValues}
+          updateAction={updateLead.bind(null, leadId)}
+        />
 
         <LeadUpdatesSection
           initialUpdates={updates}
           createLeadUpdate={createLeadUpdate.bind(null, leadId)}
           viewerEmail={viewerEmail}
+          allowAddUpdate={!isDeleted}
         />
 
-        <form
-          action={deleteLead.bind(null, leadId)}
-          className="mt-auto border-t border-[var(--border)] pt-5"
-        >
-          <Button
-            type="submit"
-            variant="primary"
-            className="w-full gap-2 border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500"
-          >
-            <RiDeleteBinLine className="size-4 shrink-0" aria-hidden />
-            Delete
-          </Button>
-        </form>
+        {isDeleted ? (
+          <div className="mt-auto space-y-3 border-t border-[var(--border)] pt-5">
+            <RestoreLeadButton leadId={leadId} />
+            <Link
+              href="/leads/deleted"
+              className="block w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] py-3 text-center text-sm font-semibold text-[var(--accent-strong)] shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-elevated)]"
+            >
+              Open Recently deleted
+            </Link>
+          </div>
+        ) : (
+          <DeleteLeadSection leadId={leadId} leadName={leadName} />
+        )}
       </Container>
     </main>
   );

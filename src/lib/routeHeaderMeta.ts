@@ -23,8 +23,11 @@ export function getRouteHeaderMeta(pathname: string): RouteHeaderMeta {
   if (p === "/leads") {
     return { title: "Leads", subtitle: "Your pipeline and clients" };
   }
+  if (p === "/leads/deleted") {
+    return { title: "Recently deleted", subtitle: "Restore leads or remove them forever" };
+  }
   if (p.startsWith("/leads/")) {
-    return { title: "Lead", subtitle: "Details and activity" };
+    return { title: "Leads", subtitle: "Details and activity" };
   }
   if (p === "/calendar" || p.startsWith("/calendar/")) {
     return { title: "Calendar", subtitle: "Events and schedule" };

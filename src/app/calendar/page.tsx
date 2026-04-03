@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CalendarPageClient } from "@/components/calendar/CalendarPageClient";
+import { CalendarPageSkeleton } from "@/components/calendar/CalendarPageSkeleton";
 import { Container } from "@/components/ui/Container";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createCalendarEvent, deleteCalendarEvent } from "./actions";
@@ -37,7 +38,7 @@ function formatTimeRange(startTime: string | null, endTime: string | null): stri
   return `${start} - ${end}`;
 }
 
-export default async function CalendarPage() {
+async function CalendarPageContent() {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -75,30 +76,24 @@ export default async function CalendarPage() {
   }
 
   return (
-    <main className="flex min-h-dvh w-full flex-col overflow-x-hidden py-5">
-      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-24">
-        <Suspense fallback={<CalendarPageViewFallback />}>
-          <CalendarPageClient
-            listEvents={listEvents}
-            gridEvents={gridEvents}
-            viewerEmail={viewerEmail}
-            createEvent={createCalendarEvent}
-            deleteEvent={deleteCalendarEvent}
-          />
-        </Suspense>
-      </Container>
-    </main>
+    <CalendarPageClient
+      listEvents={listEvents}
+      gridEvents={gridEvents}
+      viewerEmail={viewerEmail}
+      createEvent={createCalendarEvent}
+      deleteEvent={deleteCalendarEvent}
+    />
   );
 }
 
-function CalendarPageViewFallback() {
+export default function CalendarPage() {
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-5" aria-busy="true">
-      <div className="isolate flex shrink-0 flex-wrap gap-3">
-        <div className="h-11 w-[6.25rem] animate-pulse rounded-full bg-[var(--surface-muted)]" />
-        <div className="h-11 w-[6.25rem] animate-pulse rounded-full bg-[var(--surface-muted)]" />
-      </div>
-      <div className="min-h-[14rem] flex-1 animate-pulse rounded-xl bg-[var(--surface-muted)]" />
-    </div>
+    <main className="flex min-h-dvh w-full flex-col overflow-x-hidden py-5">
+      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-24">
+        <Suspense fallback={<CalendarPageSkeleton />}>
+          <CalendarPageContent />
+        </Suspense>
+      </Container>
+    </main>
   );
 }

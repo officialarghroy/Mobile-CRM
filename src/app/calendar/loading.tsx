@@ -1,13 +1,11 @@
+import { CalendarPageSkeleton } from "@/components/calendar/CalendarPageSkeleton";
 import { Container } from "@/components/ui/Container";
 
-export default function Loading() {
+export default function CalendarLoading() {
   return (
-    <main className="flex min-h-dvh w-full items-start py-5">
-      <Container className="pt-2">
-        <div className="flex items-center gap-3 text-[0.8125rem] font-medium text-[var(--text-secondary)]" role="status" aria-live="polite">
-          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent-strong)]" aria-hidden />
-          <span>Loading calendar...</span>
-        </div>
+    <main className="flex min-h-dvh w-full flex-col overflow-x-hidden py-5">
+      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-24">
+        <CalendarPageSkeleton />
       </Container>
     </main>
   );
