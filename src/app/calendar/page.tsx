@@ -1,9 +1,10 @@
 import { Suspense } from "react";
+import { AppMain } from "@/components/layout/AppMain";
 import { CalendarPageClient } from "@/components/calendar/CalendarPageClient";
 import { CalendarPageSkeleton } from "@/components/calendar/CalendarPageSkeleton";
 import { Container } from "@/components/ui/Container";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
-import { createCalendarEvent, deleteCalendarEvent } from "./actions";
+import { createCalendarEvent } from "./actions";
 
 type EventRow = {
   id: string;
@@ -52,7 +53,7 @@ async function CalendarPageContent() {
     const { data, error } = await supabase
       .from("events")
       .select("id, title, start_time, end_time, user_name")
-      .order("start_time", { ascending: true });
+      .order("start_time", { ascending: true, nullsFirst: false });
 
     if (error) {
       throw error;
@@ -81,19 +82,18 @@ async function CalendarPageContent() {
       gridEvents={gridEvents}
       viewerEmail={viewerEmail}
       createEvent={createCalendarEvent}
-      deleteEvent={deleteCalendarEvent}
     />
   );
 }
 
 export default function CalendarPage() {
   return (
-    <main className="flex min-h-dvh w-full flex-col overflow-x-hidden py-5">
-      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-24">
+    <AppMain className="overflow-x-hidden">
+      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-[var(--app-page-scroll-pad)]">
         <Suspense fallback={<CalendarPageSkeleton />}>
           <CalendarPageContent />
         </Suspense>
       </Container>
-    </main>
+    </AppMain>
   );
 }

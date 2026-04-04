@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { PasswordField } from "@/components/ui/PasswordField";
 import { removeMyAvatar, updateMyDisplayName, updateMyPassword, uploadMyAvatar } from "@/app/profile/actions";
+import { AvatarCropModal } from "@/components/user/AvatarCropModal";
 
 type ProfileFormProps = {
   email: string;
@@ -25,8 +26,8 @@ export function ProfileForm({ email, initialDisplayName, initialAvatarUrl }: Pro
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [pendingProfile, startProfile] = useTransition();
   const [pendingPassword, startPassword] = useTransition();
-  const [pendingAvatar, startAvatar] = useTransition();
   const [pendingRemoveAvatar, startRemoveAvatar] = useTransition();
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   const handleProfileSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -72,22 +73,31 @@ export function ProfileForm({ email, initialDisplayName, initialAvatarUrl }: Pro
       return;
     }
     setUploadError(null);
-    startAvatar(async () => {
-      try {
-        const fd = new FormData();
-        fd.set("avatar", file);
-        const result = await uploadMyAvatar(fd);
-        setAvatarUrl(result.publicUrl);
-        router.refresh();
-      } catch (err) {
-        const raw = err instanceof Error ? err.message : "Upload failed.";
-        const friendly =
-          /bucket not found/i.test(raw)
-            ? "Photo storage is not ready. Add SUPABASE_SERVICE_ROLE_KEY to your server env and try again, or create an \"avatars\" bucket in Supabase."
-            : raw;
-        setUploadError(friendly);
-      }
-    });
+    setCropFile(file);
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  };
+
+  const handleCroppedAvatarUpload = async (blob: Blob) => {
+    if (blob.size > 2_000_000) {
+      throw new Error("Cropped image is still over 2 MB. Try a smaller original photo.");
+    }
+    const croppedFile = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+    const fd = new FormData();
+    fd.set("avatar", croppedFile);
+    try {
+      const result = await uploadMyAvatar(fd);
+      setAvatarUrl(result.publicUrl);
+      router.refresh();
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : "Upload failed.";
+      const friendly =
+        /bucket not found/i.test(raw)
+          ? "Photo storage is not ready. Add SUPABASE_SERVICE_ROLE_KEY to your server env and try again, or create an \"avatars\" bucket in Supabase."
+          : raw;
+      throw new Error(friendly);
+    }
   };
 
   const handleRemoveAvatar = () => {
@@ -105,6 +115,12 @@ export function ProfileForm({ email, initialDisplayName, initialAvatarUrl }: Pro
 
   return (
     <div className="flex flex-col gap-5">
+      <AvatarCropModal
+        open={cropFile !== null}
+        file={cropFile}
+        onClose={() => setCropFile(null)}
+        onConfirm={handleCroppedAvatarUpload}
+      />
       <Card className="flex flex-col gap-4">
         <p className="crm-section-label">Photo</p>
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
@@ -131,9 +147,9 @@ export function ProfileForm({ email, initialDisplayName, initialAvatarUrl }: Pro
                 variant="ghost"
                 className="w-full sm:w-auto"
                 onClick={() => fileRef.current?.click()}
-                disabled={pendingAvatar || pendingRemoveAvatar}
+                disabled={pendingRemoveAvatar || cropFile !== null}
               >
-                {pendingAvatar ? "Uploading…" : "Upload photo"}
+                Upload photo
               </Button>
               {avatarUrl ? (
                 <Button
@@ -141,7 +157,7 @@ export function ProfileForm({ email, initialDisplayName, initialAvatarUrl }: Pro
                   variant="ghost"
                   className="w-full text-[var(--text-danger)] hover:bg-red-50 hover:text-red-700 sm:w-auto"
                   onClick={handleRemoveAvatar}
-                  disabled={pendingAvatar || pendingRemoveAvatar}
+                  disabled={pendingRemoveAvatar || cropFile !== null}
                 >
                   {pendingRemoveAvatar ? "Removing…" : "Remove photo"}
                 </Button>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppMain } from "@/components/layout/AppMain";
 import { Container } from "@/components/ui/Container";
 import { LeadUpdatesSection, type UpdateCardData } from "@/components/leads/LeadUpdatesSection";
 import { DeleteLeadSection } from "@/components/leads/DeleteLeadSection";
@@ -211,8 +212,8 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const isDeleted = Boolean(deletedAt);
 
   return (
-    <main className="flex w-full flex-1 flex-col py-5">
-      <Container className="flex flex-1 flex-col space-y-5 pb-24">
+    <AppMain>
+      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-[var(--app-page-scroll-pad)]">
         {isDeleted ? (
           <div
             className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
@@ -261,6 +262,6 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           <DeleteLeadSection leadId={leadId} leadName={leadName} />
         )}
       </Container>
-    </main>
+    </AppMain>
   );
 }

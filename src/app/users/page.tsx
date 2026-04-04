@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { AppMain } from "@/components/layout/AppMain";
 import { TeamMemberRows } from "@/components/user/TeamMemberRows";
+import { Container } from "@/components/ui/Container";
 import { usersTableClassName, usersTableEmailColumnClass } from "@/components/user/usersTableLayout";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { fetchTeamMembers, getMembershipForUser } from "@/lib/teamAccess";
@@ -19,8 +21,8 @@ export default async function UsersPage() {
   const { rows, error } = await fetchTeamMembers(supabase);
 
   return (
-    <main className="flex w-full min-w-0 flex-1 flex-col px-5 py-5">
-      <div className="flex flex-col space-y-5 pb-24">
+    <AppMain>
+      <Container className="flex min-w-0 flex-col space-y-5 pb-[var(--app-page-scroll-pad)]">
         {!teamId && !error ? (
           <p className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-3 text-sm text-[var(--text-secondary)]">
             You are not assigned to a team yet. Ask an admin to run the team migration or add you in Supabase.
@@ -63,7 +65,7 @@ export default async function UsersPage() {
             </div>
           </div>
         </div>
-      </div>
-    </main>
+      </Container>
+    </AppMain>
   );
 }

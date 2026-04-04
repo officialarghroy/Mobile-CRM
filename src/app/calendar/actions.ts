@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { parseDatetimeLocalToIsoUtc } from "@/lib/calendarDateTime";
+import { toUserError } from "@/lib/supabaseActionErrors";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
 export async function createCalendarEvent(formData: FormData) {
@@ -9,49 +11,98 @@ export async function createCalendarEvent(formData: FormData) {
     data: { user: actionUser },
   } = await supabase.auth.getUser();
   const email = actionUser?.email;
-  if (!email) return;
+  if (!email) {
+    throw new Error("You must be signed in to create an event.");
+  }
 
   const title = String(formData.get("title") ?? "").trim();
-  const startTime = String(formData.get("start_time") ?? "").trim();
-  const endTime = String(formData.get("end_time") ?? "").trim();
+  const startRaw = String(formData.get("start_time") ?? "").trim();
+  const endRaw = String(formData.get("end_time") ?? "").trim();
 
-  if (!title) return;
+  if (!title) {
+    throw new Error("Add an event title.");
+  }
+
+  let startIso: string | null = null;
+  let endIso: string | null = null;
+
+  if (startRaw) {
+    startIso = parseDatetimeLocalToIsoUtc(startRaw);
+    if (!startIso) {
+      throw new Error("Start time is not valid. Pick the date and time again.");
+    }
+  }
+
+  if (endRaw) {
+    endIso = parseDatetimeLocalToIsoUtc(endRaw);
+    if (!endIso) {
+      throw new Error("End time is not valid. Pick the date and time again.");
+    }
+  }
+
+  if (startIso && endIso) {
+    const startMs = Date.parse(startIso);
+    const endMs = Date.parse(endIso);
+    if (endMs <= startMs) {
+      endIso = new Date(startMs + 60 * 60 * 1000).toISOString();
+    }
+  }
+
+  if (startIso && !endIso) {
+    endIso = new Date(Date.parse(startIso) + 60 * 60 * 1000).toISOString();
+  }
+
+  if (!startIso && endIso) {
+    throw new Error("Set a start time, or clear the end time.");
+  }
 
   try {
     const { error } = await supabase.from("events").insert({
       title,
-      start_time: startTime || null,
-      end_time: endTime || null,
+      start_time: startIso,
+      end_time: endIso,
       user_name: email,
     });
 
     if (error) {
-      throw error;
+      throw toUserError(error, "Could not save the event.");
     }
 
     revalidatePath("/calendar");
   } catch (error) {
-    console.error("Failed to create event:", error);
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw toUserError(error, "Could not save the event.");
   }
 }
 
 export async function deleteCalendarEvent(eventId: string, formData: FormData) {
   void formData;
-  if (!eventId) return;
+  if (!eventId?.trim()) {
+    throw new Error("Missing event.");
+  }
 
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("You must be signed in to delete an event.");
+  }
 
   try {
     const { error } = await supabase.from("events").delete().eq("id", eventId);
 
     if (error) {
-      throw error;
+      throw toUserError(error, "Could not delete the event.");
     }
 
     revalidatePath("/calendar");
   } catch (error) {
-    console.error("Failed to delete event:", error);
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw toUserError(error, "Could not delete the event.");
   }
 }

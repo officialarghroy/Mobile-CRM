@@ -87,7 +87,9 @@ export default async function RootLayout({
       >
         <div
           className={`mx-auto flex min-h-dvh w-full max-w-[480px] flex-col ${
-            isLoginRoute ? "pb-[env(safe-area-inset-bottom)]" : "pb-[calc(5.25rem+env(safe-area-inset-bottom))]"
+            isLoginRoute
+              ? "pb-[env(safe-area-inset-bottom)]"
+              : "pb-[calc(var(--app-bottom-nav-reserved)+env(safe-area-inset-bottom))]"
           }`}
         >
           <ScrollToTopOnRouteChange />

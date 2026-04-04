@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ModalScaffold } from "@/components/ui/ModalScaffold";
+import { getUserFacingErrorMessage } from "@/lib/supabaseActionErrors";
 
 type AddEventInlineProps = {
   createEvent: (formData: FormData) => Promise<void>;
@@ -25,6 +26,7 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [startTime, setStartTime] = useState(() => toDatetimeLocalValue(startOfDayAtNine(defaultDate)));
   const [endTime, setEndTime] = useState(() =>
@@ -45,6 +47,7 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
     if (!trimmedTitle) return;
 
     startTransition(async () => {
+      setSaveError(null);
       try {
         const formData = new FormData();
         formData.set("title", trimmedTitle);
@@ -56,6 +59,7 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
         router.refresh();
       } catch (err) {
         console.error("Failed to create event:", err);
+        setSaveError(getUserFacingErrorMessage(err, "Could not save the event."));
       }
     });
   };
@@ -80,15 +84,22 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
             <Input
               type="datetime-local"
               label="Start time"
+              step={60}
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
             />
             <Input
               type="datetime-local"
               label="End time"
+              step={60}
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
             />
+            {saveError ? (
+              <p className="text-sm font-medium text-[var(--text-danger)]" role="alert">
+                {saveError}
+              </p>
+            ) : null}
             <Button type="submit" className="w-full" disabled={isPending}>
               {isPending ? "Adding..." : "Save Event"}
             </Button>

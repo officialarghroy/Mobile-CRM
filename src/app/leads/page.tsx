@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { AppMain } from "@/components/layout/AppMain";
 import { LeadsListSection } from "@/components/leads/LeadsListSection";
 import { LeadsListSkeleton } from "@/components/leads/LeadsListSkeleton";
 import { Container } from "@/components/ui/Container";
@@ -171,12 +172,12 @@ async function LeadsPageContent() {
 
 export default function LeadsPage() {
   return (
-    <main className="flex min-h-dvh w-full items-start py-5">
-      <Container className="space-y-5 pb-24">
+    <AppMain className="items-start">
+      <Container className="space-y-5 pb-[var(--app-page-scroll-pad)]">
         <Suspense fallback={<LeadsListSkeleton />}>
           <LeadsPageContent />
         </Suspense>
       </Container>
-    </main>
+    </AppMain>
   );
 }

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AppMain } from "@/components/layout/AppMain";
 import { Container } from "@/components/ui/Container";
 import { ProfileForm } from "@/components/user/ProfileForm";
 import { getDisplayNameFromUser } from "@/lib/authDisplayName";
@@ -34,14 +35,14 @@ export default async function ProfilePage() {
   }
 
   return (
-    <main className="flex w-full flex-1 flex-col py-5">
-      <Container className="flex flex-1 flex-col space-y-5 pb-24">
+    <AppMain>
+      <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-[var(--app-page-scroll-pad)]">
         <ProfileForm
           email={user.email}
           initialDisplayName={displayName}
           initialAvatarUrl={avatarUrl}
         />
       </Container>
-    </main>
+    </AppMain>
   );
 }

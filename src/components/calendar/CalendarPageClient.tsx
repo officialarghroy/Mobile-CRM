@@ -5,6 +5,7 @@ import type { ReadonlyURLSearchParams } from "next/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
 import { CalendarGrid, type CalendarGridEvent } from "@/components/calendar/CalendarGrid";
+import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarEventButton";
 import { Button } from "@/components/ui/Button";
 
 type ListEvent = {
@@ -16,14 +17,12 @@ type ListEvent = {
 };
 
 type CreateEventAction = (formData: FormData) => Promise<void>;
-type DeleteEventAction = (eventId: string, formData: FormData) => Promise<void>;
 
 type CalendarPageClientProps = {
   listEvents: ListEvent[];
   gridEvents: CalendarGridEvent[];
   viewerEmail: string;
   createEvent: CreateEventAction;
-  deleteEvent: DeleteEventAction;
 };
 
 function viewFromSearchParams(searchParams: ReadonlyURLSearchParams): "list" | "calendar" {
@@ -35,7 +34,6 @@ export function CalendarPageClient({
   gridEvents,
   viewerEmail,
   createEvent,
-  deleteEvent,
 }: CalendarPageClientProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -134,11 +132,7 @@ export function CalendarPageClient({
                   </p>
                   <p className="text-card-meta mt-1">{event.time}</p>
                 </div>
-                <form action={deleteEvent.bind(null, event.id)} className="flex shrink-0 items-center border-l border-[var(--border)] px-2">
-                  <Button type="submit" variant="ghost" className="h-9 min-h-9 rounded-full px-3 text-sm text-[var(--text-secondary)]">
-                    Delete
-                  </Button>
-                </form>
+                <DeleteCalendarEventButton eventId={event.id} />
               </div>
             ))}
           </div>

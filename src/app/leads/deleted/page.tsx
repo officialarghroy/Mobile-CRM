@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AppMain } from "@/components/layout/AppMain";
 import { DeletedLeadsClient, type DeletedLeadRow } from "@/components/leads/DeletedLeadsClient";
 import { Container } from "@/components/ui/Container";
 import { isMissingDeletedAtColumnError } from "@/lib/leadsSoftDeleteSupport";
@@ -84,8 +85,8 @@ export default async function DeletedLeadsPage() {
   }
 
   return (
-    <main className="flex min-h-dvh w-full items-start py-5">
-      <Container className="space-y-5 pb-24">
+    <AppMain className="items-start">
+      <Container className="space-y-5 pb-[var(--app-page-scroll-pad)]">
         <Link
           href="/leads"
           className="inline-flex text-sm font-semibold text-[var(--accent-strong)] underline-offset-2 hover:underline"
@@ -94,6 +95,6 @@ export default async function DeletedLeadsPage() {
         </Link>
         <DeletedLeadsClient leads={leads} />
       </Container>
-    </main>
+    </AppMain>
   );
 }

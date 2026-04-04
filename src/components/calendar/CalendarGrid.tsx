@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
-import { MonthChipScroller } from "@/components/calendar/MonthChipScroller";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
 import { dayKey } from "@/components/calendar/dayTimelineUtils";
 import { Button } from "@/components/ui/Button";
@@ -72,13 +71,6 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
     setSelectedDate(new Date(t.getFullYear(), t.getMonth(), t.getDate()));
   }, []);
 
-  const onSelectChipMonth = useCallback(
-    (monthIndex: number) => {
-      applyVisibleMonth(new Date(visibleMonth.getFullYear(), monthIndex, 1));
-    },
-    [applyVisibleMonth, visibleMonth],
-  );
-
   const { weeks, unscheduled } = useMemo(() => {
     const first = startOfMonth(visibleMonth);
     const startPad = first.getDay();
@@ -90,7 +82,6 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
       cells.push(new Date(first.getFullYear(), first.getMonth(), d));
     }
     while (cells.length % 7 !== 0) cells.push(null);
-    while (cells.length < 42) cells.push(null);
 
     const w: (Date | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) {
@@ -167,21 +158,21 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
           ))}
         </div>
         {weeks.map((row, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b border-[var(--border)] last:border-b-0">
+          <div key={wi} className="grid grid-cols-7 items-stretch border-b border-[var(--border)] last:border-b-0">
             {row.map((day, di) => {
               if (!day) {
-                return <div key={`empty-${wi}-${di}`} className="min-h-[3rem] bg-[var(--bg)]/40" />;
+                return <div key={`empty-${wi}-${di}`} className="min-h-0 bg-[var(--bg)]/40" aria-hidden />;
               }
               const key = dayKey(day);
               const isToday = sameLocalDay(day, today);
               const isSelected = sameLocalDay(day, selectedDate);
 
               return (
-                <div key={key} className="border-r border-[var(--border)] last:border-r-0">
+                <div key={key} className="flex min-h-0 border-r border-[var(--border)] last:border-r-0">
                   <button
                     type="button"
                     onClick={() => setSelectedDate(new Date(day.getFullYear(), day.getMonth(), day.getDate()))}
-                    className={`flex w-full flex-col items-center gap-0.5 py-2 transition-colors hover:bg-[var(--surface-muted)] ${
+                    className={`flex min-h-[2.75rem] w-full flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors hover:bg-[var(--surface-muted)] ${
                       isToday && !isSelected ? "bg-[var(--accent-muted)]/50" : ""
                     }`}
                   >
@@ -206,14 +197,6 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
             })}
           </div>
         ))}
-      </div>
-
-      <div className="shrink-0">
-        <MonthChipScroller
-          year={visibleMonth.getFullYear()}
-          activeMonthIndex={visibleMonth.getMonth()}
-          onSelectMonth={onSelectChipMonth}
-        />
       </div>
 
       <div
