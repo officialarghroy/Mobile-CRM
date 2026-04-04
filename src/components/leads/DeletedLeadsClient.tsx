@@ -5,6 +5,7 @@ import Link from "next/link";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { permanentlyDeleteLead } from "@/app/leads/[id]/actions";
 import { Button } from "@/components/ui/Button";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import { LeadNameConfirmModal } from "@/components/leads/LeadNameConfirmModal";
 import { RestoreLeadButton } from "@/components/leads/RestoreLeadButton";
 
@@ -55,7 +56,7 @@ export function DeletedLeadsClient({ leads }: DeletedLeadsClientProps) {
 
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+      <SurfaceListShell>
         {leads.map((lead) => (
           <div
             key={lead.id}
@@ -100,7 +101,7 @@ export function DeletedLeadsClient({ leads }: DeletedLeadsClientProps) {
             </div>
           </div>
         ))}
-      </div>
+      </SurfaceListShell>
 
       {permanentTarget ? (
         <LeadNameConfirmModal

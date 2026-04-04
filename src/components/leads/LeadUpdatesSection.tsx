@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 
 export type UpdateCardData = {
   id: string;
@@ -116,7 +117,7 @@ export function LeadUpdatesSection({
             <p>No updates yet. Log your first activity.</p>
           </div>
         ) : null}
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+        <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           {updates.map((update, index) => (
             <div
               key={update.id}
@@ -142,7 +143,7 @@ export function LeadUpdatesSection({
               </div>
             </div>
           ))}
-        </div>
+        </SurfaceListShell>
       </section>
     </div>
   );

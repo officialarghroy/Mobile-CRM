@@ -1,5 +1,6 @@
 "use client";
 
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "./calendarTypes";
 import {
@@ -39,7 +40,7 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
         </span>
       </div>
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+      <SurfaceListShell className="flex min-h-0 min-w-0 flex-1 flex-col" innerClassName="flex min-h-0 min-w-0 flex-1 flex-col">
         <div
           className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           role="region"
@@ -72,7 +73,7 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
                 return (
                   <div
                     key={event.id}
-                    className={`absolute left-1 right-1 overflow-hidden rounded-lg border px-1.5 py-1 text-left shadow-sm ${
+                    className={`absolute left-1 right-1 rounded-lg border text-left shadow-sm ${
                       mine
                         ? "border-[var(--accent-strong)]/30 bg-[var(--accent-muted)] text-[var(--accent-strong)]"
                         : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]"
@@ -84,9 +85,11 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
                     }}
                     title={event.title}
                   >
-                    <div className="flex min-h-0 items-start gap-1">
-                      <p className="min-w-0 flex-1 text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
-                      <DeleteCalendarEventButton eventId={event.id} layout="icon" />
+                    <div className="flex h-full min-h-[28px] flex-col overflow-hidden rounded-[calc(0.5rem-1px)] px-1.5 py-1">
+                      <div className="flex min-h-0 flex-1 items-start gap-1">
+                        <p className="min-w-0 flex-1 text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
+                        <DeleteCalendarEventButton eventId={event.id} layout="icon" />
+                      </div>
                     </div>
                   </div>
                 );
@@ -103,7 +106,7 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
             </div>
           </div>
         </div>
-      </div>
+      </SurfaceListShell>
     </div>
   );
 }

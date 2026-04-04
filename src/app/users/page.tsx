@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppMain } from "@/components/layout/AppMain";
 import { TeamMemberRows } from "@/components/user/TeamMemberRows";
 import { Container } from "@/components/ui/Container";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import { usersTableClassName, usersTableEmailColumnClass } from "@/components/user/usersTableLayout";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { fetchTeamMembers, getMembershipForUser } from "@/lib/teamAccess";
@@ -35,7 +36,7 @@ export default async function UsersPage() {
           </p>
         ) : null}
 
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+        <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
             <div className="w-full min-w-0">
               <table className={usersTableClassName}>
@@ -64,7 +65,7 @@ export default async function UsersPage() {
               </table>
             </div>
           </div>
-        </div>
+        </SurfaceListShell>
       </Container>
     </AppMain>
   );

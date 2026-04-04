@@ -1,3 +1,5 @@
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+
 /** Placeholder while leads data streams in (matches LeadsListSection layout). */
 export function LeadsListSkeleton() {
   return (
@@ -9,7 +11,7 @@ export function LeadsListSkeleton() {
           <div className="h-10 w-[4.25rem] animate-pulse rounded-lg bg-[var(--surface-muted)]" />
         </div>
       </div>
-      <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]">
+      <SurfaceListShell>
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
@@ -28,7 +30,7 @@ export function LeadsListSkeleton() {
             </div>
           </div>
         ))}
-      </div>
+      </SurfaceListShell>
     </section>
   );
 }

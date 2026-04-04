@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom";
 import { RiArrowDownSLine } from "react-icons/ri";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Card } from "@/components/ui/Card";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import { LEAD_FORM_STEPS } from "@/components/leads/leadFormSteps";
 
 const textareaFieldClass =
@@ -62,11 +62,14 @@ function LeadDetailContactFormInner({
 
   if (readOnly) {
     return (
-      <Card className="flex flex-col gap-0 p-0 overflow-hidden">
+      <SurfaceListShell
+        className="p-0 transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]"
+        innerClassName="flex flex-col"
+      >
         <div
           role="tablist"
           aria-label="Lead details sections"
-          className="rounded-none rounded-t-xl border-b border-[var(--border)] bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]"
+          className="rounded-none rounded-t-[calc(0.75rem-1px)] border-b border-[var(--border)] bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]"
         >
           <div className="grid grid-cols-3 gap-1">
             {LEAD_FORM_STEPS.map((s) => {
@@ -145,17 +148,20 @@ function LeadDetailContactFormInner({
             </div>
           </section>
         </div>
-      </Card>
+      </SurfaceListShell>
     );
   }
 
   return (
-    <Card className="flex flex-col gap-0 p-0 overflow-hidden">
+    <SurfaceListShell
+      className="p-0 transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]"
+      innerClassName="flex flex-col"
+    >
       <form action={updateAction} className="flex flex-col">
         <div
           role="tablist"
           aria-label="Lead details sections"
-          className="rounded-none rounded-t-xl border-b border-[var(--border)] bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]"
+          className="rounded-none rounded-t-[calc(0.75rem-1px)] border-b border-[var(--border)] bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]"
         >
           <div className="grid grid-cols-3 gap-1">
             {LEAD_FORM_STEPS.map((s) => {
@@ -297,6 +303,6 @@ function LeadDetailContactFormInner({
           )}
         </div>
       </form>
-    </Card>
+    </SurfaceListShell>
   );
 }

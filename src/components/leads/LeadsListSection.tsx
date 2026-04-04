@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 
 type LeadFilter = "all" | "lead" | "client";
 
@@ -79,7 +80,7 @@ export function LeadsListSection({ leads }: LeadsListSectionProps) {
           <p>{leads.length ? "No entries match this filter" : "No leads yet - add your first lead"}</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+        <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           {filteredLeads.map((lead) => (
             <Link
               key={lead.id}
@@ -121,7 +122,7 @@ export function LeadsListSection({ leads }: LeadsListSectionProps) {
               </div>
             </Link>
           ))}
-        </div>
+        </SurfaceListShell>
       )}
     </section>
   );

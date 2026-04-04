@@ -71,9 +71,10 @@ export function AddEventInline({ createEvent, defaultDate, onClose, onCreated }:
   return (
     <ModalScaffold open onBackdropClose={onClose} titleId="add-event-calendar-title">
       <div
-        className="pointer-events-auto mx-auto box-border w-full min-w-0 max-w-[min(28rem,100%)] max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-elevated)] sm:p-5"
+        className="pointer-events-auto mx-auto box-border w-full min-w-0 max-w-[min(28rem,100%)] rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-elevated)]"
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-[calc(0.75rem-1px)] p-4 sm:p-5">
           <h2 id="add-event-calendar-title" className="mb-3 text-xl font-semibold text-[var(--text-primary)]">
             New event
           </h2>
@@ -108,6 +109,7 @@ export function AddEventInline({ createEvent, defaultDate, onClose, onCreated }:
               {isPending ? "Adding..." : "Save Event"}
             </Button>
           </form>
+        </div>
       </div>
     </ModalScaffold>
   );

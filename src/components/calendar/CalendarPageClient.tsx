@@ -7,6 +7,7 @@ import { AddEventInline } from "@/components/calendar/AddEventInline";
 import { CalendarGrid, type CalendarGridEvent } from "@/components/calendar/CalendarGrid";
 import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarEventButton";
 import { Button } from "@/components/ui/Button";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import { formatCalendarTimeRange, type CalendarEventRow } from "@/lib/calendarEventDisplay";
 
 type ListEvent = {
@@ -157,7 +158,7 @@ export function CalendarPageClient({
             No events
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+          <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
             {displayListEvents.map((event) => (
               <div
                 key={event.id}
@@ -178,7 +179,7 @@ export function CalendarPageClient({
                 <DeleteCalendarEventButton eventId={event.id} />
               </div>
             ))}
-          </div>
+          </SurfaceListShell>
         )}
       </section>
 

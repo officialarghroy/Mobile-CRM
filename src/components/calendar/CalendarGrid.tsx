@@ -7,6 +7,7 @@ import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
 import { dayKey } from "@/components/calendar/dayTimelineUtils";
 import { Button } from "@/components/ui/Button";
+import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 
 export type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
 
@@ -150,7 +151,7 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
         ) : null}
       </div>
 
-      <div className="shrink-0 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+      <SurfaceListShell className="shrink-0 transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
         <div className="grid grid-cols-7 border-b border-[var(--border)] bg-[var(--surface-muted)] py-1">
           {WEEKDAY_LABELS.map((d) => (
             <div key={d} className="py-1 text-center text-[0.6rem] font-semibold tabular-nums tracking-tight text-[var(--text-secondary)] sm:text-[0.65rem]">
@@ -198,7 +199,7 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
             })}
           </div>
         ))}
-      </div>
+      </SurfaceListShell>
 
       <div
         className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col"
