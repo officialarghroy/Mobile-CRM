@@ -4,8 +4,8 @@
  * - No cache-first for Next.js chunks (avoids stale JS/CSS after deploys).
  * - Navigations are network-only; offline falls back to a static shell page.
  */
-const CACHE_NAME = "crm-pwa-shell-v2";
-const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/icon-192.svg", "/icon-512.svg"];
+const CACHE_NAME = "crm-pwa-shell-v3";
+const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/Logo.webp"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

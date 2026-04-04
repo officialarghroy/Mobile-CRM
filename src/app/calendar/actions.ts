@@ -5,6 +5,10 @@ import { parseDatetimeLocalToIsoUtc } from "@/lib/calendarDateTime";
 import { toUserError } from "@/lib/supabaseActionErrors";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
+/** Shown when DELETE succeeds in HTTP terms but no row was removed (RLS, wrong id, or already deleted). */
+const EVENT_DELETE_ZERO_ROWS =
+  "Could not remove this event. It may already be gone, or database rules blocked the delete. An admin can fix team access by running the SQL file supabase/MANUAL_RUN_calendar_events.sql in the Supabase SQL Editor.";
+
 export async function createCalendarEvent(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const {
@@ -92,10 +96,15 @@ export async function deleteCalendarEvent(eventId: string, formData: FormData) {
   }
 
   try {
-    const { error } = await supabase.from("events").delete().eq("id", eventId);
+    const { error, count } = await supabase.from("events").delete({ count: "exact" }).eq("id", eventId.trim());
 
     if (error) {
       throw toUserError(error, "Could not delete the event.");
+    }
+
+    if (count == null || count < 1) {
+      console.error("deleteCalendarEvent: delete affected 0 rows", { eventId: eventId.trim() });
+      throw new Error(EVENT_DELETE_ZERO_ROWS);
     }
 
     revalidatePath("/calendar");

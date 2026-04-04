@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "./calendarTypes";
 import {
   TIMELINE_HOUR_HEIGHT_PX,
@@ -71,7 +72,7 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
                 return (
                   <div
                     key={event.id}
-                    className={`absolute left-1 right-1 overflow-hidden rounded-lg border px-2 py-1 text-left shadow-sm ${
+                    className={`absolute left-1 right-1 overflow-hidden rounded-lg border px-1.5 py-1 text-left shadow-sm ${
                       mine
                         ? "border-[var(--accent-strong)]/30 bg-[var(--accent-muted)] text-[var(--accent-strong)]"
                         : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]"
@@ -79,11 +80,14 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
                     style={{
                       top: topPx,
                       height: heightPx,
-                      minHeight: 24,
+                      minHeight: 28,
                     }}
                     title={event.title}
                   >
-                    <p className="text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
+                    <div className="flex min-h-0 items-start gap-1">
+                      <p className="min-w-0 flex-1 text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
+                      <DeleteCalendarEventButton eventId={event.id} layout="icon" />
+                    </div>
                   </div>
                 );
               })}

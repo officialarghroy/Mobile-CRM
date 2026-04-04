@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
+import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
 import { dayKey } from "@/components/calendar/dayTimelineUtils";
 import { Button } from "@/components/ui/Button";
@@ -211,8 +212,9 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
           <p className="crm-section-label mb-2">No start time</p>
           <ul className="flex flex-col gap-2 text-sm text-[var(--text-primary)]">
             {unscheduled.map((ev) => (
-              <li key={ev.id} className="truncate">
-                {ev.title}
+              <li key={ev.id} className="flex min-w-0 items-start gap-2 border-b border-[var(--border)] pb-2 last:border-b-0 last:pb-0">
+                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{ev.title}</span>
+                <DeleteCalendarEventButton eventId={ev.id} layout="icon" />
               </li>
             ))}
           </ul>
