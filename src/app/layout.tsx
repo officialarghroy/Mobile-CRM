@@ -89,7 +89,7 @@ export default async function RootLayout({
         }`}
       >
         <div
-          className={`mx-auto flex min-h-dvh w-full max-w-[480px] flex-col ${
+          className={`box-border mx-auto flex min-h-dvh w-full max-w-[480px] flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] ${
             isLoginRoute
               ? "pb-[env(safe-area-inset-bottom)]"
               : "pb-[calc(var(--app-bottom-nav-reserved)+env(safe-area-inset-bottom))]"
@@ -101,7 +101,7 @@ export default async function RootLayout({
           ) : (
             <div className="shrink-0 pt-[env(safe-area-inset-top)]" aria-hidden />
           )}
-          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-x-hidden">{children}</div>
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col">{children}</div>
         </div>
         {!isLoginRoute ? <BottomNav /> : null}
         <RegisterServiceWorker />

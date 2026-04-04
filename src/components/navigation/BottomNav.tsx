@@ -68,7 +68,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Bottom navigation"
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--border)] bg-[var(--surface)] pt-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-10px_40px_rgba(15,23,42,0.07)]"
+      className="fixed inset-x-0 bottom-0 z-30 box-border border-t border-[var(--border)] bg-[var(--surface)] pt-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-[0_-10px_40px_rgba(15,23,42,0.07)]"
     >
       <Container>
         <div className="flex items-center gap-2">

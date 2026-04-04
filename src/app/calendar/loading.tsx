@@ -4,7 +4,7 @@ import { Container } from "@/components/ui/Container";
 
 export default function CalendarLoading() {
   return (
-    <AppMain className="overflow-x-hidden">
+    <AppMain>
       <Container className="flex min-h-0 flex-1 flex-col space-y-5 pb-[var(--app-page-scroll-pad)]">
         <CalendarPageSkeleton />
       </Container>
