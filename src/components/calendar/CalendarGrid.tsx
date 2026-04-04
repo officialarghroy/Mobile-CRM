@@ -201,7 +201,7 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
       </div>
 
       <div
-        className="relative left-1/2 flex min-h-0 min-w-0 w-[100dvw] max-w-[100vw] flex-1 -translate-x-1/2 flex-col pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]"
+        className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col"
         aria-label="Day schedule"
       >
         <DayTimeline selectedDate={selectedDate} events={events} viewerEmail={viewerEmail} />

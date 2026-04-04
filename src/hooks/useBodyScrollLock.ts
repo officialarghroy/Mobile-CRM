@@ -14,14 +14,18 @@ function lockDocumentScroll(): () => void {
   const scrollbarWidth = getVerticalScrollbarWidth();
 
   const prevHtmlOverflow = html.style.overflow;
+  const prevHtmlOverflowX = html.style.overflowX;
   const prevBodyOverflow = body.style.overflow;
+  const prevBodyOverflowX = body.style.overflowX;
   const prevBodyPaddingRight = body.style.paddingRight;
   const prevGutterVar = html.style.getPropertyValue(SCROLLBAR_GUTTER_VAR);
 
   html.setAttribute(SCROLL_LOCK_ATTR, "");
   html.style.setProperty(SCROLLBAR_GUTTER_VAR, `${scrollbarWidth}px`);
   html.style.overflow = "hidden";
+  html.style.overflowX = "hidden";
   body.style.overflow = "hidden";
+  body.style.overflowX = "hidden";
   if (scrollbarWidth > 0) {
     body.style.paddingRight = `${scrollbarWidth}px`;
   }
@@ -34,7 +38,9 @@ function lockDocumentScroll(): () => void {
       html.style.removeProperty(SCROLLBAR_GUTTER_VAR);
     }
     html.style.overflow = prevHtmlOverflow;
+    html.style.overflowX = prevHtmlOverflowX;
     body.style.overflow = prevBodyOverflow;
+    body.style.overflowX = prevBodyOverflowX;
     body.style.paddingRight = prevBodyPaddingRight;
   };
 }

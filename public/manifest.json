@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "CRM",
-  "short_name": "CRM",
-  "description": "Simple mobile CRM for managing leads and activity",
+  "name": "TSS CRM",
+  "short_name": "TSS CRM",
+  "description": "TSS CRM: manage leads and activity with your team",
   "lang": "en",
   "dir": "ltr",
   "display": "standalone",

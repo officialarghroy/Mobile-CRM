@@ -33,12 +33,12 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-const appDescription = "Simple mobile CRM for managing leads and activity";
+const appDescription = "TSS CRM: manage leads and activity with your team";
 
 export const metadata: Metadata = {
-  title: "CRM",
+  title: "TSS CRM",
   description: appDescription,
-  applicationName: "CRM",
+  applicationName: "TSS CRM",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "CRM",
+    title: "TSS CRM",
   },
   formatDetection: {
     telephone: false,

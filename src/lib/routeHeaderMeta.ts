@@ -39,8 +39,8 @@ export function getRouteHeaderMeta(pathname: string): RouteHeaderMeta {
     return { title: "Profile", subtitle: "Your account" };
   }
   if (p === "/login") {
-    return { title: "Sign in", subtitle: "Access your CRM" };
+    return { title: "Sign in", subtitle: "Access TSS CRM" };
   }
 
-  return { title: "CRM", subtitle: undefined };
+  return { title: "TSS CRM", subtitle: undefined };
 }

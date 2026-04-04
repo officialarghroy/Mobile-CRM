@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ModalScaffold } from "@/components/ui/ModalScaffold";
+import type { CalendarEventRow } from "@/lib/calendarEventDisplay";
 import { getUserFacingErrorMessage } from "@/lib/supabaseActionErrors";
 
 type AddEventInlineProps = {
-  createEvent: (formData: FormData) => Promise<void>;
+  createEvent: (formData: FormData) => Promise<CalendarEventRow>;
   defaultDate: Date;
   onClose: () => void;
+  /** Merges the new row into the UI immediately (covers slow or flaky RSC refresh, e.g. installed PWA). */
+  onCreated?: (row: CalendarEventRow) => void;
 };
 
 function toDatetimeLocalValue(d: Date): string {
@@ -22,7 +25,7 @@ function startOfDayAtNine(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0, 0, 0);
 }
 
-export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventInlineProps) {
+export function AddEventInline({ createEvent, defaultDate, onClose, onCreated }: AddEventInlineProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -53,10 +56,11 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
         formData.set("title", trimmedTitle);
         formData.set("start_time", startTime);
         formData.set("end_time", endTime);
-        await createEvent(formData);
+        const row = await createEvent(formData);
+        onCreated?.(row);
         setTitle("");
-        onClose();
         router.refresh();
+        onClose();
       } catch (err) {
         console.error("Failed to create event:", err);
         setSaveError(getUserFacingErrorMessage(err, "Could not save the event."));
@@ -67,13 +71,13 @@ export function AddEventInline({ createEvent, defaultDate, onClose }: AddEventIn
   return (
     <ModalScaffold open onBackdropClose={onClose} titleId="add-event-calendar-title">
       <div
-        className="pointer-events-auto mx-auto w-full max-w-md max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2.5rem))] overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-[var(--shadow-elevated)]"
+        className="pointer-events-auto mx-auto box-border w-full min-w-0 max-w-[min(28rem,100%)] max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--shadow-elevated)] sm:p-5"
         onClick={(e) => e.stopPropagation()}
       >
           <h2 id="add-event-calendar-title" className="mb-3 text-xl font-semibold text-[var(--text-primary)]">
             New event
           </h2>
-          <form className="flex flex-col gap-3 overflow-visible" onSubmit={handleSubmit}>
+          <form className="flex min-w-0 flex-col gap-3" onSubmit={handleSubmit}>
             <Input
               autoFocus
               label="Event title"

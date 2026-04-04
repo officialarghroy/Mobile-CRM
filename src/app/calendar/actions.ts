@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { parseDatetimeLocalToIsoUtc } from "@/lib/calendarDateTime";
+import type { CalendarEventRow } from "@/lib/calendarEventDisplay";
 import { toUserError } from "@/lib/supabaseActionErrors";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
@@ -9,7 +10,7 @@ import { createSupabaseServerClient } from "@/lib/supabaseServer";
 const EVENT_DELETE_ZERO_ROWS =
   "Could not remove this event. It may already be gone, or database rules blocked the delete. An admin can fix team access by running the SQL file supabase/MANUAL_RUN_calendar_events.sql in the Supabase SQL Editor.";
 
-export async function createCalendarEvent(formData: FormData) {
+export async function createCalendarEvent(formData: FormData): Promise<CalendarEventRow> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user: actionUser },
@@ -61,18 +62,28 @@ export async function createCalendarEvent(formData: FormData) {
   }
 
   try {
-    const { error } = await supabase.from("events").insert({
-      title,
-      start_time: startIso,
-      end_time: endIso,
-      user_name: email,
-    });
+    const { data, error } = await supabase
+      .from("events")
+      .insert({
+        title,
+        start_time: startIso,
+        end_time: endIso,
+        user_name: email,
+      })
+      .select("id, title, start_time, end_time, user_name")
+      .single();
 
     if (error) {
       throw toUserError(error, "Could not save the event.");
     }
 
-    revalidatePath("/calendar");
+    if (!data) {
+      throw new Error("Could not save the event.");
+    }
+
+    revalidatePath("/calendar", "page");
+
+    return data as CalendarEventRow;
   } catch (error) {
     if (error instanceof Error) {
       throw error;
@@ -107,7 +118,7 @@ export async function deleteCalendarEvent(eventId: string, formData: FormData) {
       throw new Error(EVENT_DELETE_ZERO_ROWS);
     }
 
-    revalidatePath("/calendar");
+    revalidatePath("/calendar", "page");
   } catch (error) {
     if (error instanceof Error) {
       throw error;

@@ -8,7 +8,7 @@ export default function LoginPage() {
           Sign in
         </h1>
         <p className="mt-2 text-center text-base font-normal text-[#6b7280]">
-          Enter your credentials to access your CRM
+          Enter your credentials to access TSS CRM
         </p>
 
         <LoginForm />

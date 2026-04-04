@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
 import { CalendarGrid, type CalendarGridEvent } from "@/components/calendar/CalendarGrid";
 import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarEventButton";
 import { Button } from "@/components/ui/Button";
+import { formatCalendarTimeRange, type CalendarEventRow } from "@/lib/calendarEventDisplay";
 
 type ListEvent = {
   id: string;
@@ -16,7 +17,7 @@ type ListEvent = {
   mine: boolean;
 };
 
-type CreateEventAction = (formData: FormData) => Promise<void>;
+type CreateEventAction = (formData: FormData) => Promise<CalendarEventRow>;
 
 type CalendarPageClientProps = {
   listEvents: ListEvent[];
@@ -29,6 +30,31 @@ function viewFromSearchParams(searchParams: ReadonlyURLSearchParams): "list" | "
   return searchParams.get("view") === "calendar" ? "calendar" : "list";
 }
 
+function rowToListEvent(row: CalendarGridEvent, viewerEmail: string): ListEvent {
+  const mine = row.user_name === viewerEmail;
+  return {
+    id: row.id,
+    title: row.title,
+    time: formatCalendarTimeRange(row.start_time, row.end_time),
+    user: mine ? "You" : (row.user_name ?? "Unknown"),
+    mine,
+  };
+}
+
+function mergeAndSortEvents(server: CalendarGridEvent[], staged: CalendarEventRow[]): CalendarGridEvent[] {
+  const byId = new Map(server.map((e) => [e.id, e]));
+  const out = [...server];
+  for (const s of staged) {
+    if (!byId.has(s.id)) out.push(s);
+  }
+  return out.sort((a, b) => {
+    const ta = a.start_time ? Date.parse(a.start_time) : Number.MAX_SAFE_INTEGER;
+    const tb = b.start_time ? Date.parse(b.start_time) : Number.MAX_SAFE_INTEGER;
+    if (ta !== tb) return ta - tb;
+    return a.title.localeCompare(b.title);
+  });
+}
+
 export function CalendarPageClient({
   listEvents,
   gridEvents,
@@ -39,6 +65,26 @@ export function CalendarPageClient({
   const searchParams = useSearchParams();
   const [view, setView] = useState<"list" | "calendar">(() => viewFromSearchParams(searchParams));
   const [newEventOpenedAt, setNewEventOpenedAt] = useState<number | null>(null);
+  const [stagedEvents, setStagedEvents] = useState<CalendarEventRow[]>([]);
+
+  useEffect(() => {
+    const serverIds = new Set(gridEvents.map((e) => e.id));
+    setStagedEvents((prev) => prev.filter((e) => !serverIds.has(e.id)));
+  }, [gridEvents]);
+
+  const displayGridEvents = useMemo(
+    () => mergeAndSortEvents(gridEvents, stagedEvents),
+    [gridEvents, stagedEvents],
+  );
+
+  const displayListEvents = useMemo(
+    () => displayGridEvents.map((e) => rowToListEvent(e, viewerEmail)),
+    [displayGridEvents, viewerEmail],
+  );
+
+  const handleEventCreated = useCallback((row: CalendarEventRow) => {
+    setStagedEvents((prev) => (prev.some((e) => e.id === row.id) ? prev : [...prev, row]));
+  }, []);
 
   const setCalendarView = useCallback(
     (next: "list" | "calendar") => {
@@ -69,6 +115,7 @@ export function CalendarPageClient({
           key={newEventOpenedAt}
           createEvent={createEvent}
           defaultDate={new Date(newEventOpenedAt)}
+          onCreated={handleEventCreated}
           onClose={() => setNewEventOpenedAt(null)}
         />
       ) : null}
@@ -101,21 +148,17 @@ export function CalendarPageClient({
       >
         <div className="flex min-w-0 items-center justify-between gap-3">
           <p className="crm-section-label">All events</p>
-          <Button
-            type="button"
-            className="shrink-0 px-4"
-            onClick={() => setNewEventOpenedAt(Date.now())}
-          >
+          <Button type="button" className="shrink-0 px-4" onClick={() => setNewEventOpenedAt(Date.now())}>
             Add Event
           </Button>
         </div>
-        {!listEvents.length ? (
+        {!displayListEvents.length ? (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
             No events
           </div>
         ) : (
           <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-            {listEvents.map((event) => (
+            {displayListEvents.map((event) => (
               <div
                 key={event.id}
                 className={`flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] bg-[var(--surface)] last:border-b-0 ${
@@ -145,7 +188,7 @@ export function CalendarPageClient({
       >
         <CalendarGrid
           className="min-h-0 min-w-0 flex-1"
-          events={gridEvents}
+          events={displayGridEvents}
           viewerEmail={viewerEmail}
           onAddEvent={() => setNewEventOpenedAt(Date.now())}
         />

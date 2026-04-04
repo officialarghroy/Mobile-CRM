@@ -3,16 +3,11 @@ import { AppMain } from "@/components/layout/AppMain";
 import { CalendarPageClient } from "@/components/calendar/CalendarPageClient";
 import { CalendarPageSkeleton } from "@/components/calendar/CalendarPageSkeleton";
 import { Container } from "@/components/ui/Container";
+import { formatCalendarTimeRange, type CalendarEventRow } from "@/lib/calendarEventDisplay";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { createCalendarEvent } from "./actions";
 
-type EventRow = {
-  id: string;
-  title: string;
-  start_time: string | null;
-  end_time: string | null;
-  user_name: string | null;
-};
+export const dynamic = "force-dynamic";
 
 type ListEvent = {
   id: string;
@@ -22,23 +17,6 @@ type ListEvent = {
   mine: boolean;
 };
 
-function formatTimeRange(startTime: string | null, endTime: string | null): string {
-  if (!startTime && !endTime) return "Time not set";
-  const start = startTime
-    ? new Date(startTime).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "TBD";
-  const end = endTime
-    ? new Date(endTime).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "TBD";
-  return `${start} - ${end}`;
-}
-
 async function CalendarPageContent() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -47,7 +25,7 @@ async function CalendarPageContent() {
   const viewerEmail = user?.email ?? "";
 
   let listEvents: ListEvent[] = [];
-  let gridEvents: EventRow[] = [];
+  let gridEvents: CalendarEventRow[] = [];
 
   try {
     const { data, error } = await supabase
@@ -59,7 +37,7 @@ async function CalendarPageContent() {
       throw error;
     }
 
-    const events = (data as EventRow[]) ?? [];
+    const events = (data as CalendarEventRow[]) ?? [];
     gridEvents = events;
 
     listEvents = events.map((event) => {
@@ -67,7 +45,7 @@ async function CalendarPageContent() {
       return {
         id: event.id,
         title: event.title,
-        time: formatTimeRange(event.start_time, event.end_time),
+        time: formatCalendarTimeRange(event.start_time, event.end_time),
         user: mine ? "You" : (event.user_name ?? "Unknown"),
         mine,
       };

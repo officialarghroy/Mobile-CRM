@@ -4,7 +4,7 @@
  * - No cache-first for Next.js chunks (avoids stale JS/CSS after deploys).
  * - Navigations are network-only; offline falls back to a static shell page.
  */
-const CACHE_NAME = "crm-pwa-shell-v3";
+const CACHE_NAME = "crm-pwa-shell-v5";
 const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/Logo.webp"];
 
 self.addEventListener("install", (event) => {
@@ -42,6 +42,14 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+
+  /** Never let the worker sit between Next.js RSC / data fetches and the network (avoids stale calendar after mutations in PWA). */
+  if (url.pathname.startsWith("/_next/") || request.headers.get("RSC") === "1" || request.headers.get("Next-Router-Prefetch") === "1") {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(
