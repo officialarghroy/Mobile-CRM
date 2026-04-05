@@ -3,19 +3,14 @@ import { AppMain } from "@/components/layout/AppMain";
 import { CalendarPageClient } from "@/components/calendar/CalendarPageClient";
 import { CalendarPageSkeleton } from "@/components/calendar/CalendarPageSkeleton";
 import { Container } from "@/components/ui/Container";
-import { formatCalendarTimeRange, type CalendarEventRow } from "@/lib/calendarEventDisplay";
+import { buildCreatorLookupFromTeamMembers, EMPTY_CREATOR_LOOKUP } from "@/lib/calendarCreatorLabel";
+import { normalizeCalendarEventRow, type CalendarEventRow } from "@/lib/calendarEventDisplay";
+import { isLegacyCalendarEventsSchemaError } from "@/lib/calendarEventsSchemaError";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { fetchTeamMembers, type TeamMemberRow } from "@/lib/teamAccess";
 import { createCalendarEvent } from "./actions";
 
 export const dynamic = "force-dynamic";
-
-type ListEvent = {
-  id: string;
-  title: string;
-  time: string;
-  user: string;
-  mine: boolean;
-};
 
 async function CalendarPageContent() {
   const supabase = await createSupabaseServerClient();
@@ -23,42 +18,51 @@ async function CalendarPageContent() {
     data: { user },
   } = await supabase.auth.getUser();
   const viewerEmail = user?.email ?? "";
+  const viewerUserId = user?.id ?? null;
 
-  let listEvents: ListEvent[] = [];
   let gridEvents: CalendarEventRow[] = [];
+  let creatorLookup = EMPTY_CREATOR_LOOKUP;
+  let teamMemberRows: TeamMemberRow[] = [];
+
+  const { rows: fetchedTeamMembers } = await fetchTeamMembers(supabase);
+  teamMemberRows = fetchedTeamMembers;
+  creatorLookup = buildCreatorLookupFromTeamMembers(teamMemberRows);
 
   try {
-    const { data, error } = await supabase
+    const extended = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, user_name")
+      .select("id, title, start_time, end_time, user_name, calendar_scope, owner_user_id")
       .order("start_time", { ascending: true, nullsFirst: false });
 
-    if (error) {
-      throw error;
+    let rows: Parameters<typeof normalizeCalendarEventRow>[0][] = [];
+
+    if (extended.error && isLegacyCalendarEventsSchemaError(extended.error)) {
+      const legacy = await supabase
+        .from("events")
+        .select("id, title, start_time, end_time, user_name")
+        .order("start_time", { ascending: true, nullsFirst: false });
+      if (legacy.error) {
+        throw legacy.error;
+      }
+      rows = (legacy.data ?? []) as Parameters<typeof normalizeCalendarEventRow>[0][];
+    } else if (extended.error) {
+      throw extended.error;
+    } else {
+      rows = (extended.data ?? []) as Parameters<typeof normalizeCalendarEventRow>[0][];
     }
 
-    const events = (data as CalendarEventRow[]) ?? [];
-    gridEvents = events;
-
-    listEvents = events.map((event) => {
-      const mine = event.user_name === viewerEmail;
-      return {
-        id: event.id,
-        title: event.title,
-        time: formatCalendarTimeRange(event.start_time, event.end_time),
-        user: mine ? "You" : (event.user_name ?? "Unknown"),
-        mine,
-      };
-    });
+    gridEvents = rows.map((r) => normalizeCalendarEventRow(r));
   } catch (error) {
     console.error("Failed to fetch events:", error);
   }
 
   return (
     <CalendarPageClient
-      listEvents={listEvents}
       gridEvents={gridEvents}
       viewerEmail={viewerEmail}
+      viewerUserId={viewerUserId}
+      creatorLookup={creatorLookup}
+      teamMembers={teamMemberRows}
       createEvent={createCalendarEvent}
     />
   );

@@ -8,6 +8,14 @@ export type TeamMemberRow = {
   member_since: string;
 };
 
+/** Display names to drop from team listings (legacy test accounts). */
+const REMOVED_TEAM_MEMBER_DISPLAY_NAMES = new Set(["test user", "test user 2", "testuser2"]);
+
+function isRemovedTeamMemberRow(row: TeamMemberRow): boolean {
+  const key = row.display_name.trim().toLowerCase().replace(/\s+/g, " ");
+  return REMOVED_TEAM_MEMBER_DISPLAY_NAMES.has(key);
+}
+
 const TEAM_ROLES = ["admin", "developer", "content_writer"] as const;
 export type TeamRole = (typeof TEAM_ROLES)[number];
 
@@ -81,5 +89,5 @@ export async function fetchTeamMembers(
     member_since: String(r.member_since ?? ""),
   }));
 
-  return { rows, error: null };
+  return { rows: rows.filter((r) => !isRemovedTeamMemberRow(r)), error: null };
 }

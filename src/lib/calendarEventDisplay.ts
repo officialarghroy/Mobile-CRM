@@ -1,3 +1,10 @@
+/** Shared vs private event; enforced by RLS on `events`. */
+export type CalendarScope = "team" | "personal";
+
+export function calendarScopeLabel(scope: CalendarScope): string {
+  return scope === "personal" ? "Personal" : "Team";
+}
+
 /** Row shape for `events` table (client and server). */
 export type CalendarEventRow = {
   id: string;
@@ -5,7 +12,41 @@ export type CalendarEventRow = {
   start_time: string | null;
   end_time: string | null;
   user_name: string | null;
+  calendar_scope: CalendarScope;
+  owner_user_id: string | null;
 };
+
+/** Rows from DB before migration may omit scope; treat as team. */
+export function normalizeCalendarEventRow(row: {
+  id: string;
+  title: string;
+  start_time: string | null;
+  end_time: string | null;
+  user_name: string | null;
+  calendar_scope?: CalendarScope | null;
+  owner_user_id?: string | null;
+}): CalendarEventRow {
+  const scope: CalendarScope = row.calendar_scope === "personal" ? "personal" : "team";
+  return {
+    id: row.id,
+    title: row.title,
+    start_time: row.start_time,
+    end_time: row.end_time,
+    user_name: row.user_name,
+    calendar_scope: scope,
+    owner_user_id: row.owner_user_id ?? null,
+  };
+}
+
+export function isCalendarEventMine(
+  row: Pick<CalendarEventRow, "user_name" | "owner_user_id">,
+  viewerEmail: string,
+  viewerUserId: string | null,
+): boolean {
+  if (viewerUserId && row.owner_user_id && row.owner_user_id === viewerUserId) return true;
+  if (viewerEmail && row.user_name && row.user_name === viewerEmail) return true;
+  return false;
+}
 
 export function formatCalendarTimeRange(startTime: string | null, endTime: string | null): string {
   if (!startTime && !endTime) return "Time not set";

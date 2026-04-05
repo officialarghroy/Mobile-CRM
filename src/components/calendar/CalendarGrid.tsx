@@ -5,7 +5,9 @@ import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
-import { dayKey } from "@/components/calendar/dayTimelineUtils";
+import { dayKey, parseEventStart } from "@/components/calendar/dayTimelineUtils";
+import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
+import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
 import { Button } from "@/components/ui/Button";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 
@@ -15,8 +17,20 @@ type CalendarGridProps = {
   className?: string;
   events: CalendarGridEvent[];
   viewerEmail: string;
+  viewerUserId: string | null;
+  creatorLookup: CreatorLookup;
   onAddEvent?: () => void;
 };
+
+function dayKeysWithTimedEvents(events: CalendarGridEvent[]): Set<string> {
+  const s = new Set<string>();
+  for (const e of events) {
+    const start = parseEventStart(e.start_time);
+    if (!start) continue;
+    s.add(dayKey(start));
+  }
+  return s;
+}
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -46,7 +60,14 @@ function startOfLocalDay(d: Date): Date {
 
 const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }: CalendarGridProps) {
+export function CalendarGrid({
+  className = "",
+  events,
+  viewerEmail,
+  viewerUserId,
+  creatorLookup,
+  onAddEvent,
+}: CalendarGridProps) {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const t = new Date();
@@ -94,6 +115,8 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
 
     return { weeks: w, unscheduled: unsched };
   }, [visibleMonth, events]);
+
+  const timedDayKeys = useMemo(() => dayKeysWithTimedEvents(events), [events]);
 
   const monthTitle = visibleMonth.toLocaleString("en-US", { month: "long", year: "numeric" });
 
@@ -168,6 +191,7 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
               const key = dayKey(day);
               const isToday = sameLocalDay(day, today);
               const isSelected = sameLocalDay(day, selectedDate);
+              const hasTimedEvent = timedDayKeys.has(key);
 
               return (
                 <div key={key} className="flex min-h-0 border-r border-[var(--border)] last:border-r-0">
@@ -190,7 +214,13 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
                       {day.getDate()}
                     </span>
                     <span
-                      className={`h-1 w-1 shrink-0 rounded-full ${isToday ? "bg-[var(--success)]" : "bg-transparent"}`}
+                      className={`h-1 w-1 shrink-0 rounded-full ${
+                        isToday
+                          ? "bg-[var(--success)]"
+                          : hasTimedEvent
+                            ? "bg-[var(--text-tertiary)]/70"
+                            : "bg-transparent"
+                      }`}
                       aria-hidden
                     />
                   </button>
@@ -205,7 +235,13 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
         className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col"
         aria-label="Day schedule"
       >
-        <DayTimeline selectedDate={selectedDate} events={events} viewerEmail={viewerEmail} />
+        <DayTimeline
+          selectedDate={selectedDate}
+          events={events}
+          viewerEmail={viewerEmail}
+          viewerUserId={viewerUserId}
+          creatorLookup={creatorLookup}
+        />
       </div>
 
       {unscheduled.length > 0 ? (
@@ -214,8 +250,18 @@ export function CalendarGrid({ className = "", events, viewerEmail, onAddEvent }
           <ul className="flex flex-col gap-2 text-sm text-[var(--text-primary)]">
             {unscheduled.map((ev) => (
               <li key={ev.id} className="flex min-w-0 items-start gap-2 border-b border-[var(--border)] pb-2 last:border-b-0 last:pb-0">
-                <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{ev.title}</span>
-                <DeleteCalendarEventButton eventId={ev.id} layout="icon" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium [overflow-wrap:anywhere] text-[var(--text-primary)]">{ev.title}</p>
+                  <p className="mt-1 text-[0.7rem] font-medium text-red-600 dark:text-red-400">
+                    Added by {formatEventCreatorLabel(ev, viewerEmail, viewerUserId, creatorLookup)}
+                  </p>
+                </div>
+                <DeleteCalendarEventButton
+                  eventId={ev.id}
+                  eventTitle={ev.title}
+                  layout="icon"
+                  calendarScope={ev.calendar_scope}
+                />
               </li>
             ))}
           </ul>

@@ -1,6 +1,9 @@
 "use client";
 
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
+import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
+import { calendarScopeLabel, isCalendarEventMine } from "@/lib/calendarEventDisplay";
 import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "./calendarTypes";
 import {
@@ -16,9 +19,29 @@ type DayTimelineProps = {
   selectedDate: Date;
   events: CalendarGridEvent[];
   viewerEmail: string;
+  viewerUserId: string | null;
+  creatorLookup: CreatorLookup;
 };
 
-export function DayTimeline({ className = "", selectedDate, events, viewerEmail }: DayTimelineProps) {
+function eventBlockClasses(event: CalendarGridEvent, viewerEmail: string, viewerUserId: string | null): string {
+  const mine = isCalendarEventMine(event, viewerEmail, viewerUserId);
+  if (event.calendar_scope === "personal") {
+    return "border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-100";
+  }
+  if (mine) {
+    return "border-[var(--accent-strong)]/30 bg-[var(--accent-muted)] text-[var(--accent-strong)]";
+  }
+  return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]";
+}
+
+export function DayTimeline({
+  className = "",
+  selectedDate,
+  events,
+  viewerEmail,
+  viewerUserId,
+  creatorLookup,
+}: DayTimelineProps) {
   const dayEvents = eventsForLocalDay(events, selectedDate);
   const placed = placeEventsForDay(selectedDate, dayEvents);
 
@@ -69,26 +92,31 @@ export function DayTimeline({ className = "", selectedDate, events, viewerEmail 
               ))}
 
               {placed.map(({ event, topPx, heightPx }) => {
-                const mine = event.user_name === viewerEmail;
                 return (
                   <div
                     key={event.id}
-                    className={`absolute left-1 right-1 rounded-lg border text-left shadow-sm ${
-                      mine
-                        ? "border-[var(--accent-strong)]/30 bg-[var(--accent-muted)] text-[var(--accent-strong)]"
-                        : "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]"
-                    }`}
+                    className={`absolute left-1 right-1 rounded-lg border text-left shadow-sm ${eventBlockClasses(event, viewerEmail, viewerUserId)}`}
                     style={{
                       top: topPx,
                       height: heightPx,
-                      minHeight: 28,
+                      minHeight: 44,
                     }}
-                    title={event.title}
+                    title={`${event.title} · ${calendarScopeLabel(event.calendar_scope)} · Added by ${formatEventCreatorLabel(event, viewerEmail, viewerUserId, creatorLookup)}`}
                   >
-                    <div className="flex h-full min-h-[28px] flex-col overflow-hidden rounded-[calc(0.5rem-1px)] px-1.5 py-1">
+                    <div className="flex h-full min-h-[44px] flex-col overflow-hidden rounded-[calc(0.5rem-1px)] px-1.5 py-1">
                       <div className="flex min-h-0 flex-1 items-start gap-1">
-                        <p className="min-w-0 flex-1 text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
-                        <DeleteCalendarEventButton eventId={event.id} layout="icon" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
+                          <p className="mt-0.5 truncate text-[0.6rem] font-medium text-red-600 dark:text-red-400">
+                            Added by {formatEventCreatorLabel(event, viewerEmail, viewerUserId, creatorLookup)}
+                          </p>
+                        </div>
+                        <DeleteCalendarEventButton
+                          eventId={event.id}
+                          eventTitle={event.title}
+                          layout="icon"
+                          calendarScope={event.calendar_scope}
+                        />
                       </div>
                     </div>
                   </div>

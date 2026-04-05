@@ -1,14 +1,4 @@
--- Run in Supabase SQL Editor if you do not apply migrations via CLI.
--- Calendar events: team (shared) and personal (owner-only), with RLS.
-
-CREATE TABLE IF NOT EXISTS public.events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL DEFAULT '',
-  start_time timestamptz,
-  end_time timestamptz,
-  user_name text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+-- Team vs personal calendar: scope column, owner for RLS, and policies.
 
 ALTER TABLE public.events
   ADD COLUMN IF NOT EXISTS calendar_scope text NOT NULL DEFAULT 'team',
@@ -22,7 +12,6 @@ ALTER TABLE public.events
 
 UPDATE public.events SET calendar_scope = 'team' WHERE calendar_scope IS NULL;
 
-CREATE INDEX IF NOT EXISTS events_start_time_idx ON public.events (start_time);
 CREATE INDEX IF NOT EXISTS events_calendar_scope_idx ON public.events (calendar_scope);
 CREATE INDEX IF NOT EXISTS events_owner_user_id_idx ON public.events (owner_user_id);
 
@@ -42,11 +31,13 @@ DROP POLICY IF EXISTS events_update_personal_own ON public.events;
 DROP POLICY IF EXISTS events_delete_team ON public.events;
 DROP POLICY IF EXISTS events_delete_personal_own ON public.events;
 
+-- Team events: everyone signed in. Personal: only the owner.
 CREATE POLICY events_select_visible ON public.events FOR SELECT TO authenticated USING (
   calendar_scope = 'team'
   OR (calendar_scope = 'personal' AND owner_user_id = auth.uid())
 );
 
+-- Team: scope team; optional owner must be self or null. Personal: must set owner to self.
 CREATE POLICY events_insert_scoped ON public.events FOR INSERT TO authenticated WITH CHECK (
   (
     calendar_scope = 'team'
@@ -55,6 +46,7 @@ CREATE POLICY events_insert_scoped ON public.events FOR INSERT TO authenticated 
   OR (calendar_scope = 'personal' AND owner_user_id = auth.uid())
 );
 
+-- Team rows stay team (prevents retagging someone else's event as personal).
 CREATE POLICY events_update_team ON public.events FOR UPDATE TO authenticated USING (calendar_scope = 'team') WITH CHECK (calendar_scope = 'team');
 
 CREATE POLICY events_update_personal_own ON public.events FOR UPDATE TO authenticated USING (

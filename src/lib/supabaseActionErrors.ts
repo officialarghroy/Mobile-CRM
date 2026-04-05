@@ -15,8 +15,17 @@ const MISSING_EXTENDED =
 const GENERIC_MISSING_COLUMN =
   "A required column is missing on leads. Run supabase/MANUAL_RUN_leads_schema.sql in the Supabase SQL Editor, then try again.";
 
+const MISSING_EVENTS_CALENDAR_SCOPE =
+  "Your calendar database is missing team or personal columns. Run supabase/MANUAL_RUN_calendar_events.sql in the Supabase SQL Editor, then try again.";
+
 function parse42703Message(raw: string): string {
   const lower = raw.toLowerCase();
+  if (
+    (lower.includes("calendar_scope") || lower.includes("owner_user_id")) &&
+    lower.includes("events")
+  ) {
+    return MISSING_EVENTS_CALENDAR_SCOPE;
+  }
   if (lower.includes("deleted_at")) return MISSING_DELETED_AT;
   if (
     lower.includes("email") ||

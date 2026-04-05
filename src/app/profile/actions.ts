@@ -39,6 +39,7 @@ export async function updateMyDisplayName(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/profile");
+  revalidatePath("/calendar", "page");
 }
 
 const AVATAR_MAX_BYTES = 2_000_000;

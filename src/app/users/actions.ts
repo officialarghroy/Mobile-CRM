@@ -88,4 +88,5 @@ export async function createUser(formData: FormData) {
   }
 
   revalidatePath("/users");
+  revalidatePath("/calendar", "page");
 }

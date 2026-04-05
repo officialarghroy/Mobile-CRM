@@ -75,7 +75,7 @@ export function placeEventsForDay(
     let topPx = startMin * minutePx;
     let heightPx = durMin * minutePx;
     topPx = Math.max(0, Math.min(topPx, totalMinutes * minutePx));
-    heightPx = Math.max(20, Math.min(heightPx, totalMinutes * minutePx - topPx));
+    heightPx = Math.max(44, Math.min(heightPx, totalMinutes * minutePx - topPx));
 
     placed.push({
       event,

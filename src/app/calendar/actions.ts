@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { parseDatetimeLocalToIsoUtc } from "@/lib/calendarDateTime";
-import type { CalendarEventRow } from "@/lib/calendarEventDisplay";
+import { normalizeCalendarEventRow, type CalendarEventRow } from "@/lib/calendarEventDisplay";
+import {
+  CALENDAR_PERSONAL_REQUIRES_MIGRATION,
+  isLegacyCalendarEventsSchemaError,
+} from "@/lib/calendarEventsSchemaError";
 import { toUserError } from "@/lib/supabaseActionErrors";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 
@@ -16,9 +20,13 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
     data: { user: actionUser },
   } = await supabase.auth.getUser();
   const email = actionUser?.email;
-  if (!email) {
+  const userId = actionUser?.id;
+  if (!email || !userId) {
     throw new Error("You must be signed in to create an event.");
   }
+
+  const scopeRaw = String(formData.get("calendar_scope") ?? "").trim().toLowerCase();
+  const calendar_scope = scopeRaw === "personal" ? "personal" : "team";
 
   const title = String(formData.get("title") ?? "").trim();
   const startRaw = String(formData.get("start_time") ?? "").trim();
@@ -61,29 +69,62 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
     throw new Error("Set a start time, or clear the end time.");
   }
 
+  const basePayload = {
+    title,
+    start_time: startIso,
+    end_time: endIso,
+    user_name: email,
+  };
+
   try {
-    const { data, error } = await supabase
+    let data: Record<string, unknown> | null = null;
+    let error: { message?: string } | null = null;
+    let usedLegacyInsert = false;
+
+    // Return only `id` from PostgREST so a stale schema cache on newer columns does not break the insert.
+    const full = await supabase
       .from("events")
       .insert({
-        title,
-        start_time: startIso,
-        end_time: endIso,
-        user_name: email,
+        ...basePayload,
+        calendar_scope,
+        owner_user_id: userId,
       })
-      .select("id, title, start_time, end_time, user_name")
+      .select("id")
       .single();
+
+    data = full.data as Record<string, unknown> | null;
+    error = full.error;
+
+    if (error && isLegacyCalendarEventsSchemaError(error)) {
+      if (calendar_scope === "personal") {
+        throw new Error(CALENDAR_PERSONAL_REQUIRES_MIGRATION);
+      }
+      usedLegacyInsert = true;
+      const legacy = await supabase.from("events").insert(basePayload).select("id").single();
+      data = legacy.data as Record<string, unknown> | null;
+      error = legacy.error;
+    }
 
     if (error) {
       throw toUserError(error, "Could not save the event.");
     }
 
-    if (!data) {
+    const newId = data && typeof (data as { id: unknown }).id === "string" ? (data as { id: string }).id : null;
+    if (!newId) {
       throw new Error("Could not save the event.");
     }
 
     revalidatePath("/calendar", "page");
 
-    return data as CalendarEventRow;
+    return normalizeCalendarEventRow({
+      id: newId,
+      title,
+      start_time: startIso,
+      end_time: endIso,
+      user_name: email,
+      calendar_scope: usedLegacyInsert ? "team" : calendar_scope,
+      owner_user_id: usedLegacyInsert ? null : userId,
+    });
   } catch (error) {
     if (error instanceof Error) {
       throw error;

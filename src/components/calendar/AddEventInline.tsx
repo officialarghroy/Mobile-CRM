@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ModalScaffold } from "@/components/ui/ModalScaffold";
-import type { CalendarEventRow } from "@/lib/calendarEventDisplay";
+import type { CalendarEventRow, CalendarScope } from "@/lib/calendarEventDisplay";
 import { getUserFacingErrorMessage } from "@/lib/supabaseActionErrors";
 
 type AddEventInlineProps = {
   createEvent: (formData: FormData) => Promise<CalendarEventRow>;
   defaultDate: Date;
+  /** Initial Team vs Personal choice when the modal opens (e.g. match the Events list filter). */
+  defaultCalendarScope?: CalendarScope;
   onClose: () => void;
   /** Merges the new row into the UI immediately (covers slow or flaky RSC refresh, e.g. installed PWA). */
   onCreated?: (row: CalendarEventRow) => void;
@@ -25,11 +27,18 @@ function startOfDayAtNine(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0, 0, 0);
 }
 
-export function AddEventInline({ createEvent, defaultDate, onClose, onCreated }: AddEventInlineProps) {
+export function AddEventInline({
+  createEvent,
+  defaultDate,
+  defaultCalendarScope = "team",
+  onClose,
+  onCreated,
+}: AddEventInlineProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [isPending, startTransition] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [calendarScope, setCalendarScope] = useState<CalendarScope>(defaultCalendarScope);
 
   const [startTime, setStartTime] = useState(() => toDatetimeLocalValue(startOfDayAtNine(defaultDate)));
   const [endTime, setEndTime] = useState(() =>
@@ -56,6 +65,7 @@ export function AddEventInline({ createEvent, defaultDate, onClose, onCreated }:
         formData.set("title", trimmedTitle);
         formData.set("start_time", startTime);
         formData.set("end_time", endTime);
+        formData.set("calendar_scope", calendarScope);
         const row = await createEvent(formData);
         onCreated?.(row);
         setTitle("");
@@ -79,6 +89,36 @@ export function AddEventInline({ createEvent, defaultDate, onClose, onCreated }:
             New event
           </h2>
           <form className="flex min-w-0 flex-col gap-3" onSubmit={handleSubmit}>
+            <div>
+              <p className="mb-2 text-sm font-medium text-[var(--text-primary)]">Calendar</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCalendarScope("team")}
+                  className={`inline-flex h-10 min-h-10 items-center rounded-full px-4 text-sm font-medium transition-colors ${
+                    calendarScope === "team"
+                      ? "border border-transparent bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)]"
+                      : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+                  }`}
+                >
+                  Team
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalendarScope("personal")}
+                  className={`inline-flex h-10 min-h-10 items-center rounded-full px-4 text-sm font-medium transition-colors ${
+                    calendarScope === "personal"
+                      ? "border border-transparent bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)]"
+                      : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]"
+                  }`}
+                >
+                  Personal
+                </button>
+              </div>
+              <p className="mt-1.5 text-xs text-[var(--text-tertiary)]">
+                Team is shared with everyone signed in. Personal is only your private events.
+              </p>
+            </div>
             <Input
               autoFocus
               label="Event title"
