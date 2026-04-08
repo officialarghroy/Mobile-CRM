@@ -24,7 +24,7 @@ export function Button({
     size === "lg" ? "h-11 min-h-11 px-6 text-sm font-medium" : "h-11 min-h-11 px-5 text-sm font-medium";
 
   const baseClasses =
-    "inline-flex items-center justify-center rounded-full font-medium transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-2 rounded-full font-medium leading-none transition-transform duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:block [&_svg]:shrink-0";
 
   return (
     <button

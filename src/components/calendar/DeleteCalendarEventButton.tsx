@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { deleteCalendarEvent } from "@/app/calendar/actions";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { ModalScaffold } from "@/components/ui/ModalScaffold";
 import { getUserFacingErrorMessage } from "@/lib/supabaseActionErrors";
 import type { CalendarScope } from "@/lib/calendarEventDisplay";
@@ -30,12 +31,14 @@ export function DeleteCalendarEventButton({
 }: DeleteCalendarEventButtonProps) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const closeModal = () => {
     if (pending) return;
     setConfirmOpen(false);
+    setConfirmTitle("");
     setError(null);
   };
 
@@ -44,6 +47,7 @@ export function DeleteCalendarEventButton({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || pending) return;
       setConfirmOpen(false);
+      setConfirmTitle("");
       setError(null);
     };
     window.addEventListener("keydown", onKeyDown);
@@ -52,26 +56,32 @@ export function DeleteCalendarEventButton({
 
   const openModal = () => {
     setError(null);
+    setConfirmTitle("");
     setConfirmOpen(true);
-  };
-
-  const runDelete = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        await deleteCalendarEvent(eventId, new FormData());
-        setConfirmOpen(false);
-        router.refresh();
-      } catch (err) {
-        setError(getUserFacingErrorMessage(err, "Could not delete."));
-      }
-    });
   };
 
   const isTask = kind === "task";
   const displayTitle = eventTitle.trim() || (isTask ? "Untitled task" : "Untitled event");
   const entity = isTask ? "task" : "event";
   const entityCap = isTask ? "Task" : "Event";
+  const titleConfirmOk = !isTask || confirmTitle.trim() === displayTitle;
+
+  const runDelete = () => {
+    if (isTask && confirmTitle.trim() !== displayTitle) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      try {
+        await deleteCalendarEvent(eventId, new FormData());
+        setConfirmOpen(false);
+        setConfirmTitle("");
+        router.refresh();
+      } catch (err) {
+        setError(getUserFacingErrorMessage(err, "Could not delete."));
+      }
+    });
+  };
 
   const modal = (
     <ModalScaffold open={confirmOpen} onBackdropClose={closeModal} titleId={CONFIRM_TITLE_ID}>
@@ -88,12 +98,26 @@ export function DeleteCalendarEventButton({
               ? `This removes your personal ${entity}. You cannot undo it.`
               : `This removes the ${entity} for everyone on the team. You cannot undo it.`}
           </p>
-          <p className="mb-4 text-sm font-medium text-[var(--text-primary)]">
-            {entityCap}
+          <p
+            className={`mb-2 text-sm font-medium text-[var(--text-primary)] ${isTask ? "" : "mb-4"}`}
+          >
+            {entityCap} to remove
             <span className="mt-1 block rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-[0.9375rem] font-normal [overflow-wrap:anywhere] text-[var(--text-primary)]">
               {displayTitle}
             </span>
           </p>
+          {isTask ? (
+            <div className="mb-4">
+              <Input
+                label="Type the task title exactly"
+                autoComplete="off"
+                value={confirmTitle}
+                onChange={(e) => setConfirmTitle(e.target.value)}
+                placeholder="Match the title above"
+                aria-invalid={confirmTitle.length > 0 && !titleConfirmOk ? true : undefined}
+              />
+            </div>
+          ) : null}
           {error ? (
             <p className="mb-4 text-sm font-medium text-[var(--text-danger)]" role="alert">
               {error}
@@ -105,11 +129,11 @@ export function DeleteCalendarEventButton({
             </Button>
             <Button
               type="button"
-              className="w-full gap-2 border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500 sm:w-auto"
-              disabled={pending}
+              className="w-full border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500 sm:w-auto"
+              disabled={pending || !titleConfirmOk}
               onClick={runDelete}
             >
-              <RiDeleteBinLine className="size-4 shrink-0" aria-hidden />
+              <RiDeleteBinLine className="size-4" aria-hidden />
               {pending ? "Deleting…" : `Delete ${entity}`}
             </Button>
           </div>

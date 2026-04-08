@@ -122,7 +122,7 @@ function LeadNameConfirmModalForm({
         <Button
           type="submit"
           variant="primary"
-          className="w-full gap-2 border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500 disabled:opacity-60"
+          className="w-full border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500 disabled:opacity-60"
           disabled={isPending || !matches}
         >
           {isPending ? "Working..." : submitLabel}

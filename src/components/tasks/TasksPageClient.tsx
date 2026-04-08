@@ -84,6 +84,7 @@ function TaskList({
       {tasks.map((task) => {
         const assigner = assignerDisplayLabel(task, teamMembers, viewerUserId);
         const done = Boolean(task.completed_at?.trim());
+        const titleLabel = task.title?.trim() ? task.title.trim() : "Untitled task";
         return (
           <div
             key={task.id}
@@ -106,14 +107,14 @@ function TaskList({
                         : "text-[var(--text-primary)]"
                     }`}
                   >
-                    {task.title}
+                    {titleLabel}
                   </p>
                   {canToggle ? (
                     <DeleteCalendarEventButton
                       kind="task"
                       layout="icon"
                       eventId={task.id}
-                      eventTitle={task.title}
+                      eventTitle={task.title ?? ""}
                       calendarScope={rowCalendarScope(task)}
                     />
                   ) : null}
@@ -192,6 +193,7 @@ function AssignedTaskList({
     <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
       {tasks.map((task) => {
         const done = Boolean(task.completed_at?.trim());
+        const titleLabel = task.title?.trim() ? task.title.trim() : "Untitled task";
         return (
           <div
             key={task.id}
@@ -214,14 +216,14 @@ function AssignedTaskList({
                         : "text-[var(--text-primary)]"
                     }`}
                   >
-                    {task.title}
+                    {titleLabel}
                   </p>
                   {canToggle ? (
                     <DeleteCalendarEventButton
                       kind="task"
                       layout="icon"
                       eventId={task.id}
-                      eventTitle={task.title}
+                      eventTitle={task.title ?? ""}
                       calendarScope={rowCalendarScope(task)}
                     />
                   ) : null}

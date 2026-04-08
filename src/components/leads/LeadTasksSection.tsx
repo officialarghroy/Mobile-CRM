@@ -160,6 +160,7 @@ export function LeadTasksSection({
             ]
               .filter(Boolean)
               .join(" ");
+            const titleLabel = ev.title?.trim() ? ev.title.trim() : "Untitled task";
 
             return (
               <div key={ev.id} className={rowClasses}>
@@ -178,14 +179,14 @@ export function LeadTasksSection({
                             : "text-[var(--text-primary)]"
                         }`}
                       >
-                        {ev.title || "Untitled"}
+                        {titleLabel}
                       </p>
                       {viewerUserId ? (
                         <DeleteCalendarEventButton
                           kind="task"
                           layout="icon"
                           eventId={ev.id}
-                          eventTitle={ev.title || "Untitled"}
+                          eventTitle={ev.title ?? ""}
                           calendarScope={rowCalendarScope(ev)}
                         />
                       ) : null}

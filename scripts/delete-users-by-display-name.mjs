@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Deletes auth users whose profile display name matches (case-insensitive, trimmed).
+ * Deletes auth users by profile display name and/or email (case-insensitive, trimmed).
+ * Any argument containing @ is treated as an email; others as display names.
  * Cascades to user_profiles and team_members (FK to auth.users).
  *
  * Usage (repo root):
- *   node scripts/delete-users-by-display-name.mjs "nnn" "hhh" "arghyadeep roy"
+ *   node scripts/delete-users-by-display-name.mjs "Display One" user@example.com
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (.env.local).
  */
@@ -38,23 +39,37 @@ function normName(s) {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function normEmail(s) {
+  if (s == null || typeof s !== "string") return "";
+  return s.trim().toLowerCase();
+}
+
 loadEnvLocal();
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-const argNames = process.argv.slice(2).map((a) => normName(a)).filter(Boolean);
+const rawArgs = process.argv.slice(2).filter(Boolean);
+const targetEmails = new Set();
+const targetNames = new Set();
+for (const a of rawArgs) {
+  if (a.includes("@")) {
+    const e = normEmail(a);
+    if (e) targetEmails.add(e);
+  } else {
+    const n = normName(a);
+    if (n) targetNames.add(n);
+  }
+}
 
 if (!url || !serviceKey) {
   console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY (.env.local).");
   process.exit(1);
 }
 
-if (argNames.length === 0) {
-  console.error("Pass one or more display names as arguments.");
+if (targetEmails.size === 0 && targetNames.size === 0) {
+  console.error("Pass one or more display names and/or email addresses as arguments.");
   process.exit(1);
 }
-
-const targetSet = new Set(argNames);
 
 const admin = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
@@ -68,7 +83,7 @@ if (profErr) {
   process.exit(1);
 }
 for (const row of profiles ?? []) {
-  if (row?.user_id && targetSet.has(normName(row.display_name))) {
+  if (row?.user_id && targetNames.size > 0 && targetNames.has(normName(row.display_name))) {
     idsToDelete.add(row.user_id);
   }
 }
@@ -83,8 +98,12 @@ for (;;) {
   }
   const users = listData?.users ?? [];
   for (const u of users) {
+    const mail = normEmail(u.email);
+    if (mail && targetEmails.has(mail)) {
+      idsToDelete.add(u.id);
+    }
     const metaName = normName(u.user_metadata?.name);
-    if (metaName && targetSet.has(metaName)) {
+    if (targetNames.size > 0 && metaName && targetNames.has(metaName)) {
       idsToDelete.add(u.id);
     }
   }
@@ -93,7 +112,10 @@ for (;;) {
 }
 
 if (idsToDelete.size === 0) {
-  console.log("No users matched display names:", [...targetSet].join(", "));
+  console.log("No users matched.", {
+    displayNames: [...targetNames],
+    emails: [...targetEmails],
+  });
   process.exit(0);
 }
 

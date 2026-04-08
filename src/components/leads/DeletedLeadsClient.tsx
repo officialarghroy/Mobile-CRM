@@ -91,10 +91,10 @@ export function DeletedLeadsClient({ leads }: DeletedLeadsClientProps) {
                 <Button
                   type="button"
                   variant="primary"
-                  className="w-full gap-2 border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500 sm:flex-1"
+                  className="w-full border-0 bg-red-600 text-white shadow-[0_4px_14px_rgba(220,38,38,0.35)] hover:bg-red-700 hover:brightness-100 focus-visible:ring-red-500 sm:flex-1"
                   onClick={() => setPermanentTarget({ id: lead.id, name: lead.name })}
                 >
-                  <RiDeleteBinLine className="size-4 shrink-0" aria-hidden />
+                  <RiDeleteBinLine className="size-4" aria-hidden />
                   Delete forever
                 </Button>
               </div>
