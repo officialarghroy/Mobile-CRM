@@ -1,22 +1,26 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AppMain } from "@/components/layout/AppMain";
 import { Container } from "@/components/ui/Container";
-import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+import {
+  TasksPageClient,
+  type TaskEventRow,
+} from "@/components/tasks/TasksPageClient";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
-import { formatInPST, pstDateKeyFromInstant } from "@/lib/timezone";
+import { fetchTeamMembers } from "@/lib/teamAccess";
+import { pstDateKeyFromInstant } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
-type TaskEventRow = {
-  id: string;
-  title: string;
-  start_time: string | null;
-  end_time: string | null;
-  lead_id: string | null;
-};
+function isTaskCompleted(row: Pick<TaskEventRow, "completed_at">): boolean {
+  return Boolean(row.completed_at?.trim());
+}
 
 function sortByStartAsc(a: TaskEventRow, b: TaskEventRow): number {
+  const ca = isTaskCompleted(a);
+  const cb = isTaskCompleted(b);
+  if (ca !== cb) {
+    return ca ? 1 : -1;
+  }
   const ta = a.start_time ? Date.parse(a.start_time) : Number.MAX_SAFE_INTEGER;
   const tb = b.start_time ? Date.parse(b.start_time) : Number.MAX_SAFE_INTEGER;
   if (ta !== tb) return ta - tb;
@@ -51,52 +55,6 @@ function groupTasksByPstDay(rows: TaskEventRow[], todayPstKey: string) {
   return { todayTasks, upcomingTasks, pastTasks };
 }
 
-function TaskSection({
-  label,
-  tasks,
-  emptyMessage,
-}: {
-  label: string;
-  tasks: TaskEventRow[];
-  emptyMessage: string;
-}) {
-  return (
-    <section className="flex flex-col space-y-3" aria-label={label}>
-      <p className="crm-section-label">{label}</p>
-      {!tasks.length ? (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-6 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)]">
-          {emptyMessage}
-        </div>
-      ) : (
-        <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="border-b border-[var(--border)] border-l-[3px] border-l-[var(--accent-strong)] px-3 py-3 text-left last:border-b-0"
-            >
-              <div className="flex flex-col gap-2 pl-1">
-                <p className="text-base font-medium text-[var(--text-primary)] [overflow-wrap:anywhere]">{task.title}</p>
-                <p className="crm-meta text-[var(--text-secondary)]">
-                  {task.start_time ? formatInPST(task.start_time) : "Time not set"}
-                </p>
-                {task.lead_id ? (
-                  <Link
-                    href={`/leads/${task.lead_id}`}
-                    prefetch
-                    className="inline-flex w-fit rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)] shadow-sm"
-                  >
-                    From lead
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </SurfaceListShell>
-      )}
-    </section>
-  );
-}
-
 export default async function TasksPage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -107,12 +65,20 @@ export default async function TasksPage() {
     redirect("/login");
   }
 
+  const currentUserId = user.id;
+  const currentUserEmail = user.email ?? "";
+
   let rows: TaskEventRow[] = [];
+  let assignedTaskRows: TaskEventRow[] = [];
+
+  const { rows: teamMemberRows } = await fetchTeamMembers(supabase);
 
   try {
     const { data, error } = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, lead_id")
+      .select(
+        "id, title, start_time, end_time, lead_id, created_by_user_id, user_name, completed_at, owner_user_id, calendar_scope",
+      )
       .eq("owner_user_id", user.id)
       .order("start_time", { ascending: true, nullsFirst: false });
 
@@ -129,15 +95,76 @@ export default async function TasksPage() {
     console.error("Failed to fetch tasks:", err);
   }
 
+  try {
+    const assignedSelect =
+      "id, title, start_time, end_time, lead_id, owner_user_id, user_name, created_by_user_id, completed_at, calendar_scope";
+
+    const assignedBase = () =>
+      supabase
+        .from("events")
+        .select(assignedSelect)
+        .neq("owner_user_id", currentUserId)
+        .order("start_time", { ascending: true, nullsFirst: false });
+
+    const [{ data: byCreatorId, error: assignedErrId }, { data: byLegacyEmail, error: assignedErrLegacy }] =
+      await Promise.all([
+        assignedBase().eq("created_by_user_id", currentUserId),
+        currentUserEmail.trim()
+          ? assignedBase().is("created_by_user_id", null).ilike("user_name", currentUserEmail.trim())
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+
+    const logAssignedErr = (err: unknown, label: string) => {
+      const code = err && typeof err === "object" && "code" in err ? String((err as { code?: string }).code) : "";
+      const msg =
+        err && typeof err === "object" && "message" in err
+          ? String((err as { message?: string }).message ?? "")
+          : "";
+      if (code !== "PGRST205") {
+        console.error(label, msg, code ?? "");
+      }
+    };
+
+    if (assignedErrId) {
+      logAssignedErr(assignedErrId, "Failed to fetch assigned tasks (by creator id):");
+    }
+    if (assignedErrLegacy) {
+      logAssignedErr(assignedErrLegacy, "Failed to fetch assigned tasks (legacy email):");
+    }
+
+    const merged = new Map<string, TaskEventRow>();
+    for (const row of [...(byCreatorId ?? []), ...(byLegacyEmail ?? [])]) {
+      merged.set(row.id, row as TaskEventRow);
+    }
+    assignedTaskRows = [...merged.values()];
+  } catch (err) {
+    console.error("Failed to fetch assigned tasks:", err);
+  }
+
   const todayPstKey = pstDateKeyFromInstant(new Date());
-  const { todayTasks, upcomingTasks, pastTasks } = groupTasksByPstDay(rows, todayPstKey);
+  const { todayTasks, upcomingTasks, pastTasks } = groupTasksByPstDay(
+    rows,
+    todayPstKey,
+  );
+  const {
+    todayTasks: assignedTodayTasks,
+    upcomingTasks: assignedUpcomingTasks,
+    pastTasks: assignedPastTasks,
+  } = groupTasksByPstDay(assignedTaskRows, todayPstKey);
 
   return (
     <AppMain className="items-start">
-      <Container className="flex min-h-0 flex-1 flex-col space-y-6 pb-[var(--app-page-scroll-pad)]">
-        <TaskSection label="Today" tasks={todayTasks} emptyMessage="Nothing scheduled for you today." />
-        <TaskSection label="Upcoming" tasks={upcomingTasks} emptyMessage="No upcoming tasks." />
-        <TaskSection label="Past" tasks={pastTasks} emptyMessage="No past tasks." />
+      <Container className="flex min-h-0 flex-1 flex-col pb-[var(--app-page-scroll-pad)]">
+        <TasksPageClient
+          viewerUserId={currentUserId}
+          todayTasks={todayTasks}
+          upcomingTasks={upcomingTasks}
+          pastTasks={pastTasks}
+          assignedTodayTasks={assignedTodayTasks}
+          assignedUpcomingTasks={assignedUpcomingTasks}
+          assignedPastTasks={assignedPastTasks}
+          teamMembers={teamMemberRows}
+        />
       </Container>
     </AppMain>
   );

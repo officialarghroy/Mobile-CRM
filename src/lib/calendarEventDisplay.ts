@@ -16,6 +16,7 @@ export type CalendarEventRow = {
   user_name: string | null;
   calendar_scope: CalendarScope;
   owner_user_id: string | null;
+  completed_at: string | null;
 };
 
 /** Rows from DB before migration may omit scope; treat as team. */
@@ -27,6 +28,7 @@ export function normalizeCalendarEventRow(row: {
   user_name: string | null;
   calendar_scope?: CalendarScope | null;
   owner_user_id?: string | null;
+  completed_at?: string | null;
 }): CalendarEventRow {
   const scope: CalendarScope = row.calendar_scope === "personal" ? "personal" : "team";
   return {
@@ -37,6 +39,7 @@ export function normalizeCalendarEventRow(row: {
     user_name: row.user_name,
     calendar_scope: scope,
     owner_user_id: row.owner_user_id ?? null,
+    completed_at: row.completed_at?.trim() ? row.completed_at : null,
   };
 }
 

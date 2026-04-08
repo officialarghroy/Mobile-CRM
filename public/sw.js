@@ -3,8 +3,10 @@
  * - No HTML precache (avoids stale / personalized documents).
  * - No cache-first for Next.js chunks (avoids stale JS/CSS after deploys).
  * - Navigations are network-only; offline falls back to a static shell page.
+ * - Bump CACHE_NAME when PRECACHE_URLS change so old shells are deleted on activate.
+ * - Client reloads on new worker (RegisterServiceWorker) so installs pick up new sw.js/fast.
  */
-const CACHE_NAME = "crm-pwa-shell-v5";
+const CACHE_NAME = "crm-pwa-shell-v6";
 const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/Logo.webp"];
 
 self.addEventListener("install", (event) => {

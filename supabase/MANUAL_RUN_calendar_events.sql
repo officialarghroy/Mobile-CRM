@@ -15,6 +15,12 @@ ALTER TABLE public.events
   ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES auth.users (id) ON DELETE SET NULL;
 
 ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS created_by_user_id uuid REFERENCES auth.users (id) ON DELETE SET NULL;
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS lead_id uuid REFERENCES public.leads (id) ON DELETE SET NULL;
+
+ALTER TABLE public.events
   DROP CONSTRAINT IF EXISTS events_calendar_scope_check;
 
 ALTER TABLE public.events
@@ -25,6 +31,45 @@ UPDATE public.events SET calendar_scope = 'team' WHERE calendar_scope IS NULL;
 CREATE INDEX IF NOT EXISTS events_start_time_idx ON public.events (start_time);
 CREATE INDEX IF NOT EXISTS events_calendar_scope_idx ON public.events (calendar_scope);
 CREATE INDEX IF NOT EXISTS events_owner_user_id_idx ON public.events (owner_user_id);
+CREATE INDEX IF NOT EXISTS events_created_by_user_id_idx ON public.events (created_by_user_id);
+CREATE INDEX IF NOT EXISTS events_lead_id_idx ON public.events (lead_id);
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS completed_at timestamptz NULL;
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS completed_by_user_id uuid REFERENCES auth.users (id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS events_owner_open_task_idx ON public.events (owner_user_id)
+  WHERE completed_at IS NULL;
+
+UPDATE public.events e
+SET created_by_user_id = u.id
+FROM auth.users u
+WHERE
+  e.created_by_user_id IS NULL
+  AND e.user_name IS NOT NULL
+  AND trim(e.user_name) <> ''
+  AND lower(trim(e.user_name)) = lower(trim(u.email));
+
+CREATE OR REPLACE FUNCTION public.team_users_share_a_team (a uuid, b uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.team_members tm1
+    INNER JOIN public.team_members tm2 ON tm1.team_id = tm2.team_id
+    WHERE tm1.user_id = a
+      AND tm2.user_id = b
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.team_users_share_a_team (uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.team_users_share_a_team (uuid, uuid) TO authenticated;
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
@@ -50,9 +95,13 @@ CREATE POLICY events_select_visible ON public.events FOR SELECT TO authenticated
 CREATE POLICY events_insert_scoped ON public.events FOR INSERT TO authenticated WITH CHECK (
   (
     calendar_scope = 'team'
-    AND (owner_user_id IS NULL OR owner_user_id = auth.uid())
+    AND (
+      owner_user_id IS NULL
+      OR owner_user_id = auth.uid ()
+      OR public.team_users_share_a_team (auth.uid (), owner_user_id)
+    )
   )
-  OR (calendar_scope = 'personal' AND owner_user_id = auth.uid())
+  OR (calendar_scope = 'personal' AND owner_user_id = auth.uid ())
 );
 
 CREATE POLICY events_update_team ON public.events FOR UPDATE TO authenticated USING (calendar_scope = 'team') WITH CHECK (calendar_scope = 'team');

@@ -33,7 +33,10 @@ export function getRouteHeaderMeta(pathname: string): RouteHeaderMeta {
     return { title: "Calendar", subtitle: "Events and schedule" };
   }
   if (p === "/tasks" || p.startsWith("/tasks/")) {
-    return { title: "My Tasks", subtitle: "Events assigned to you" };
+    return {
+      title: "My Tasks",
+      subtitle: "Your tasks first, then tasks you assigned to others",
+    };
   }
   if (p === "/users") {
     return { title: "Users", subtitle: "Team members and roles" };

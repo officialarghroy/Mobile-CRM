@@ -28,14 +28,16 @@ type DayTimelineProps = {
 };
 
 function eventBlockClasses(event: CalendarGridEvent, viewerEmail: string, viewerUserId: string | null): string {
+  const done = Boolean(event.completed_at?.trim());
+  const opacity = done ? " opacity-[0.72]" : "";
   const mine = isCalendarEventMine(event, viewerEmail, viewerUserId);
   if (event.calendar_scope === "personal") {
-    return "border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-100";
+    return `border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-100${opacity}`;
   }
   if (mine) {
-    return "border-[var(--accent-strong)]/30 bg-[var(--accent-muted)] text-[var(--accent-strong)]";
+    return `border-[var(--accent-strong)]/30 bg-[var(--accent-muted)] text-[var(--accent-strong)]${opacity}`;
   }
-  return "border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]";
+  return `border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text-primary)]${opacity}`;
 }
 
 export function DayTimeline({
@@ -110,7 +112,15 @@ export function DayTimeline({
                     <div className="flex h-full min-h-[44px] flex-col overflow-hidden rounded-[calc(0.5rem-1px)] px-1.5 py-1">
                       <div className="flex min-h-0 flex-1 items-start gap-1">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold leading-tight line-clamp-2">{event.title}</p>
+                          <p
+                            className={`text-xs font-semibold leading-tight line-clamp-2 ${
+                              event.completed_at?.trim()
+                                ? "line-through decoration-[var(--text-secondary)] opacity-90"
+                                : ""
+                            }`}
+                          >
+                            {event.title}
+                          </p>
                           <p className="mt-0.5 truncate text-[0.6rem] font-medium text-red-600 dark:text-red-400">
                             Added by {formatEventCreatorLabel(event, viewerEmail, viewerUserId, creatorLookup)}
                           </p>

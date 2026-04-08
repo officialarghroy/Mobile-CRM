@@ -29,6 +29,7 @@ type ListEvent = {
   addedBy: string;
   mine: boolean;
   calendar_scope: CalendarScope;
+  completed: boolean;
 };
 
 type CreateEventAction = (formData: FormData) => Promise<CalendarEventRow>;
@@ -77,6 +78,7 @@ function rowToListEvent(
     addedBy: formatEventCreatorLabel(row, viewerEmail, viewerUserId, lookup),
     mine,
     calendar_scope: row.calendar_scope,
+    completed: Boolean(row.completed_at?.trim()),
   };
 }
 
@@ -152,7 +154,15 @@ function CalendarEventListRow({ event }: { event: ListEvent }) {
       className={`flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] bg-[var(--surface)] last:border-b-0 ${listRowLeftBorderClass(event)}`}
     >
       <div className="min-w-0 flex-1 px-4 py-4 pl-5">
-        <p className="text-card-title [overflow-wrap:anywhere]">{event.title}</p>
+        <p
+          className={`text-card-title [overflow-wrap:anywhere] ${
+            event.completed
+              ? "text-[var(--text-secondary)] line-through decoration-[var(--text-tertiary)]"
+              : ""
+          }`}
+        >
+          {event.title}
+        </p>
         <p
           className="crm-meta mt-1 font-medium text-red-600 dark:text-red-400"
           title={`${calendarScopeLabel(event.calendar_scope)} · Added by ${event.addedBy}`}

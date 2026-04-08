@@ -97,6 +97,12 @@ export function AddEventInline({
   }, [viewerUserId, assigneeRows]);
 
   useEffect(() => {
+    if (calendarScope === "personal" && viewerUserId) {
+      setAssignedUserId(viewerUserId);
+    }
+  }, [calendarScope, viewerUserId]);
+
+  useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -187,7 +193,7 @@ export function AddEventInline({
                 name="assigned_user_id"
                 value={assignedUserId}
                 onChange={(e) => setAssignedUserId(e.target.value)}
-                disabled={isPending}
+                disabled={isPending || calendarScope === "personal"}
                 className="h-11 min-h-11 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 text-sm text-[var(--text-primary)] outline-none transition-colors focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {assigneeRows.map((m) => (
@@ -196,6 +202,9 @@ export function AddEventInline({
                   </option>
                 ))}
               </select>
+              {calendarScope === "personal" ? (
+                <p className="text-xs text-[var(--text-tertiary)]">Personal events are always yours.</p>
+              ) : null}
             </div>
             <Input
               type="datetime-local"

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppMain } from "@/components/layout/AppMain";
 import { Container } from "@/components/ui/Container";
+import { LeadTasksSection, type LeadTasksSectionEvent } from "@/components/leads/LeadTasksSection";
 import { LeadUpdatesSection, type UpdateCardData } from "@/components/leads/LeadUpdatesSection";
 import { DeleteLeadSection } from "@/components/leads/DeleteLeadSection";
 import { RestoreLeadButton } from "@/components/leads/RestoreLeadButton";
@@ -36,6 +37,7 @@ type LeadUpdate = {
   content: string;
   created_at: string;
   created_by: string | null;
+  image_urls: string[] | null;
 };
 
 function formatLeadNameFromSlug(slug: string): string {
@@ -75,6 +77,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   let leadIssueDescription = "";
   let deletedAt: string | null = null;
   let updates: UpdateCardData[] = [];
+  let leadEvents: LeadTasksSectionEvent[] = [];
 
   const leadExtendedSelect =
     "name, business, address, type, deleted_at, email, phone, equipment_brand, equipment_model, brand_model, issue_description";
@@ -84,7 +87,11 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const leadBasicSelect = "name, business, address, type";
 
   try {
-    const [{ data: leadData, error: leadError }, { data: updatesData, error: updatesError }] = await Promise.all([
+    const [
+      { data: leadData, error: leadError },
+      { data: updatesData, error: updatesError },
+      { data: leadEventsData, error: leadEventsError },
+    ] = await Promise.all([
       (async () => {
         let r = await supabase.from("leads").select(leadExtendedSelect).eq("id", leadId).single();
         if (r.error && isMissingDeletedAtColumnError(r.error as SupabaseError)) {
@@ -100,9 +107,13 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       })(),
       supabase
         .from("lead_updates")
-        .select("id, content, created_at, created_by")
+        .select("id, content, created_at, created_by, image_urls")
         .eq("lead_id", leadId)
         .order("created_at", { ascending: false }),
+                        supabase
+                        .from("events")
+                        .select("id, title, start_time, owner_user_id, user_name, created_by_user_id, completed_at, calendar_scope")
+                        .eq("lead_id", leadId),
     ]);
 
     if (leadError) {
@@ -137,6 +148,12 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       leadIssueDescription = typeof row.issue_description === "string" ? row.issue_description : "";
     }
 
+    if (leadEventsError) {
+      logLeadDetailSupabaseError("Failed to fetch lead events:", leadEventsError);
+    } else {
+      leadEvents = (leadEventsData ?? []) as LeadTasksSectionEvent[];
+    }
+
     if (updatesError) {
       throw updatesError;
     }
@@ -146,6 +163,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
       content: update.content,
       createdAt: update.created_at,
       author: update.created_by || "Unknown",
+      image_urls: Array.isArray(update.image_urls) ? update.image_urls : null,
     }));
   } catch (error) {
     logLeadDetailSupabaseError("Failed to fetch lead updates:", error);
@@ -208,6 +226,13 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           readOnly={isDeleted}
           values={contactValues}
           updateAction={updateLead.bind(null, leadId)}
+        />
+
+        <LeadTasksSection
+          events={leadEvents}
+          viewerUserId={viewerUserId}
+          viewerEmail={viewerEmail}
+          teamMembers={teamMemberRows}
         />
 
         <LeadUpdatesSection

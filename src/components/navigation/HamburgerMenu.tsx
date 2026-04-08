@@ -130,6 +130,14 @@ export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
 
                 <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-5 pb-2" aria-label="Main navigation">
                   <Link
+                    href="/tasks"
+                    onClick={() => setIsOpen(false)}
+                    className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                  >
+                    <RiListCheck2 className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                    My Tasks
+                  </Link>
+                  <Link
                     href="/leads"
                     onClick={() => setIsOpen(false)}
                     className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
@@ -145,25 +153,15 @@ export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
                     <RiCalendarEventLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
                     Calendar
                   </Link>
-                  <Link
-                    href="/tasks"
-                    onClick={() => setIsOpen(false)}
-                    className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
-                  >
-                    <RiListCheck2 className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
-                    My Tasks
-                  </Link>
                   {initialProfile.hasSupabaseAuth ? (
-                    <>
-                      <Link
-                        href="/users"
-                        onClick={() => setIsOpen(false)}
-                        className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
-                      >
-                        <RiUserLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
-                        Users
-                      </Link>
-                    </>
+                    <Link
+                      href="/users"
+                      onClick={() => setIsOpen(false)}
+                      className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                    >
+                      <RiUserLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                      Users
+                    </Link>
                   ) : null}
                 </nav>
 

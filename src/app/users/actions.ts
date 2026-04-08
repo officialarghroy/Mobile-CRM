@@ -19,7 +19,8 @@ export async function createUser(formData: FormData) {
   if (teamErr || teamIdRaw == null) {
     throw new Error("You are not on a team. Run the teams migration or contact support.");
   }
-  const teamId = String(teamIdRaw);
+  /* Lowercase so auth app_metadata matches handle_new_user_team's UUID check (case-sensitive regex in DB). */
+  const teamId = String(teamIdRaw).trim().toLowerCase();
 
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
@@ -54,7 +55,20 @@ export async function createUser(formData: FormData) {
   });
 
   if (error) {
-    throw new Error(error.message);
+    /* GoTrue often returns only "Database error creating new user" here; the real cause is in Postgres (usually the auth.users trigger). */
+    const err = error as Error & { code?: string; status?: number };
+    console.error("auth.admin.createUser failed:", {
+      message: err.message,
+      code: err.code,
+      status: err.status,
+      email,
+    });
+    if (err.message === "Database error creating new user") {
+      throw new Error(
+        "Supabase rolled back user creation: almost always permission denied inside public.handle_new_user_team (auth triggers run as supabase_auth_admin). Apply supabase/migrations/20260409120000_fix_handle_new_user_team_auth_admin_permissions.sql in the SQL Editor (OWNER TO postgres, SECURITY DEFINER). Then check Postgres logs if it persists.",
+      );
+    }
+    throw new Error(err.message);
   }
 
   const newId = created.user?.id;
@@ -80,13 +94,35 @@ export async function createUser(formData: FormData) {
     throw new Error(memErr.message);
   }
 
-  if (displayName) {
-    await supabaseAdmin.from("user_profiles").upsert(
-      { user_id: newId, display_name: displayName },
-      { onConflict: "user_id" },
+  const { data: membershipCheck, error: membershipVerifyErr } = await supabaseAdmin
+    .from("team_members")
+    .select("user_id")
+    .eq("team_id", teamId)
+    .eq("user_id", newId)
+    .maybeSingle();
+
+  if (membershipVerifyErr || !membershipCheck) {
+    try {
+      await supabaseAdmin.auth.admin.deleteUser(newId);
+    } catch {
+      /* best effort */
+    }
+    throw new Error(
+      "The user was created but could not be confirmed on your team. Check database migrations (handle_new_user_team / team_members) or try again.",
     );
   }
 
+  if (displayName) {
+    const { error: profileErr } = await supabaseAdmin.from("user_profiles").upsert(
+      { user_id: newId, display_name: displayName },
+      { onConflict: "user_id" },
+    );
+    if (profileErr) {
+      console.error("user_profiles upsert after createUser:", profileErr.message);
+    }
+  }
+
   revalidatePath("/users");
+  revalidatePath("/users", "layout");
   revalidatePath("/calendar", "page");
 }

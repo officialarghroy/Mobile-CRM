@@ -17,6 +17,8 @@ type DeleteCalendarEventButtonProps = {
   /** `list`: Events list row with label. `icon`: compact control for calendar cells and unscheduled items. */
   layout?: "list" | "icon";
   calendarScope?: CalendarScope;
+  /** Task wording for My Tasks / lead task rows (same underlying `events` row). */
+  kind?: "event" | "task";
 };
 
 export function DeleteCalendarEventButton({
@@ -24,6 +26,7 @@ export function DeleteCalendarEventButton({
   eventTitle,
   layout = "list",
   calendarScope = "team",
+  kind = "event",
 }: DeleteCalendarEventButtonProps) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -65,7 +68,10 @@ export function DeleteCalendarEventButton({
     });
   };
 
-  const displayTitle = eventTitle.trim() || "Untitled event";
+  const isTask = kind === "task";
+  const displayTitle = eventTitle.trim() || (isTask ? "Untitled task" : "Untitled event");
+  const entity = isTask ? "task" : "event";
+  const entityCap = isTask ? "Task" : "Event";
 
   const modal = (
     <ModalScaffold open={confirmOpen} onBackdropClose={closeModal} titleId={CONFIRM_TITLE_ID}>
@@ -75,15 +81,15 @@ export function DeleteCalendarEventButton({
       >
         <div className="max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-[calc(0.75rem-1px)] p-4 sm:p-5">
           <h2 id={CONFIRM_TITLE_ID} className="mb-3 text-xl font-semibold text-[var(--text-primary)]">
-            Delete this event?
+            Delete this {entity}?
           </h2>
           <p className="mb-3 text-sm leading-relaxed text-[var(--text-secondary)]">
             {calendarScope === "personal"
-              ? "This removes your personal event. You cannot undo it."
-              : "This removes the event for everyone on the team. You cannot undo it."}
+              ? `This removes your personal ${entity}. You cannot undo it.`
+              : `This removes the ${entity} for everyone on the team. You cannot undo it.`}
           </p>
           <p className="mb-4 text-sm font-medium text-[var(--text-primary)]">
-            Event
+            {entityCap}
             <span className="mt-1 block rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-[0.9375rem] font-normal [overflow-wrap:anywhere] text-[var(--text-primary)]">
               {displayTitle}
             </span>
@@ -104,7 +110,7 @@ export function DeleteCalendarEventButton({
               onClick={runDelete}
             >
               <RiDeleteBinLine className="size-4 shrink-0" aria-hidden />
-              {pending ? "Deleting…" : "Delete event"}
+              {pending ? "Deleting…" : `Delete ${entity}`}
             </Button>
           </div>
         </div>
@@ -120,7 +126,7 @@ export function DeleteCalendarEventButton({
           <button
             type="button"
             disabled={pending}
-            aria-label="Delete event"
+            aria-label={isTask ? "Delete task" : "Delete event"}
             aria-haspopup="dialog"
             aria-expanded={confirmOpen}
             title="Delete"

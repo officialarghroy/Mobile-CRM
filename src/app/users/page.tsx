@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { AppMain } from "@/components/layout/AppMain";
 import { TeamMemberRows } from "@/components/user/TeamMemberRows";
@@ -7,7 +8,10 @@ import { usersTableClassName, usersTableEmailColumnClass } from "@/components/us
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { fetchTeamMembers, getMembershipForUser } from "@/lib/teamAccess";
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersPage() {
+  noStore();
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },

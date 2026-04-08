@@ -36,7 +36,12 @@ export async function getMembershipForUser(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<{ teamId: string | null; role: TeamRole | null }> {
-  const { data, error } = await supabase.from("team_members").select("team_id, role").eq("user_id", userId).limit(1);
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("team_id, role")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1);
 
   if (error) {
     if (process.env.NODE_ENV === "development" && !isMissingTeamTableError(error)) {
@@ -59,10 +64,16 @@ export async function isTeamAdmin(supabase: SupabaseClient, userId: string): Pro
   return role === "admin";
 }
 
+function normalizeRpcRows(data: unknown): Record<string, unknown>[] {
+  if (data == null) return [];
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  return [data as Record<string, unknown>];
+}
+
 export async function fetchTeamMembers(
   supabase: SupabaseClient,
 ): Promise<{ rows: TeamMemberRow[]; error: string | null }> {
-  const { data, error } = await supabase.rpc("get_team_members");
+  const { data, error } = await supabase.rpc("get_team_members", {}, { get: false });
 
   if (error) {
     const msg = error.message ?? "";
@@ -80,14 +91,21 @@ export async function fetchTeamMembers(
     return { rows: [], error: msg };
   }
 
-  const raw = (data ?? []) as Record<string, unknown>[];
-  const rows: TeamMemberRow[] = raw.map((r) => ({
-    user_id: String(r.user_id ?? ""),
-    email: String(r.email ?? ""),
-    display_name: String(r.display_name ?? "—"),
-    role: String(r.role ?? ""),
-    member_since: String(r.member_since ?? ""),
-  }));
+  const raw = normalizeRpcRows(data);
+  const rows: TeamMemberRow[] = raw.map((r) => {
+    const userId = r.user_id ?? r.userId;
+    const email = r.email ?? r.Email;
+    const displayName = r.display_name ?? r.displayName;
+    const role = r.role ?? r.Role;
+    const memberSince = r.member_since ?? r.memberSince;
+    return {
+      user_id: String(userId ?? ""),
+      email: String(email ?? ""),
+      display_name: String(displayName ?? "—"),
+      role: String(role ?? ""),
+      member_since: String(memberSince ?? ""),
+    };
+  });
 
   return { rows: rows.filter((r) => !isRemovedTeamMemberRow(r)), error: null };
 }

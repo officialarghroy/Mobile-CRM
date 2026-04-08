@@ -24,18 +24,32 @@ export function isLegacyCalendarEventsSchemaError(error: unknown): boolean {
   }
 
   if (code === "PGRST204") {
-    return lower.includes("calendar_scope") || lower.includes("owner_user_id");
+    return (
+      lower.includes("calendar_scope") ||
+      lower.includes("owner_user_id") ||
+      lower.includes("completed_at")
+    );
   }
 
   if (code === "42703") {
     return (
       lower.includes("events") &&
-      (lower.includes("calendar_scope") || lower.includes("owner_user_id"))
+      (lower.includes("calendar_scope") ||
+        lower.includes("owner_user_id") ||
+        lower.includes("completed_at"))
     );
   }
 
   if (!lower.includes("events")) return false;
-  if (!(lower.includes("calendar_scope") || lower.includes("owner_user_id"))) return false;
+  if (
+    !(
+      lower.includes("calendar_scope") ||
+      lower.includes("owner_user_id") ||
+      lower.includes("completed_at")
+    )
+  ) {
+    return false;
+  }
 
   return (
     lower.includes("schema cache") ||

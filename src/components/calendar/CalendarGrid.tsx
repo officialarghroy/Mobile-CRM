@@ -250,7 +250,15 @@ export function CalendarGrid({
             {unscheduled.map((ev) => (
               <li key={ev.id} className="flex min-w-0 items-start gap-2 border-b border-[var(--border)] pb-2 last:border-b-0 last:pb-0">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium [overflow-wrap:anywhere] text-[var(--text-primary)]">{ev.title}</p>
+                  <p
+                    className={`font-medium [overflow-wrap:anywhere] ${
+                      ev.completed_at?.trim()
+                        ? "text-[var(--text-secondary)] line-through decoration-[var(--text-tertiary)]"
+                        : "text-[var(--text-primary)]"
+                    }`}
+                  >
+                    {ev.title}
+                  </p>
                   <p className="mt-1 text-[0.7rem] font-medium text-red-600 dark:text-red-400">
                     Added by {formatEventCreatorLabel(ev, viewerEmail, viewerUserId, creatorLookup)}
                   </p>

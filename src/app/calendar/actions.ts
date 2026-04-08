@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { parseDatetimeLocalToIsoUtc } from "@/lib/calendarDateTime";
 import { normalizeCalendarEventRow, type CalendarEventRow } from "@/lib/calendarEventDisplay";
 import {
+  CALENDAR_EVENTS_MIGRATION_HINT,
   CALENDAR_PERSONAL_REQUIRES_MIGRATION,
   isLegacyCalendarEventsSchemaError,
 } from "@/lib/calendarEventsSchemaError";
@@ -39,7 +40,16 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
     typeof assignedUserIdField === "string" && assignedUserIdField.trim()
       ? assignedUserIdField.trim()
       : null;
-  const ownerUserId = assignedUserId || userId;
+  let ownerUserId = assignedUserId || userId;
+  if (calendar_scope === "personal") {
+    ownerUserId = userId;
+  }
+
+  console.log("Creating event:", {
+    creator: userId,
+    assigned: ownerUserId,
+    leadId,
+  });
 
   if (!title) {
     throw new Error("Add an event title.");
@@ -83,52 +93,42 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
     start_time: startIso,
     end_time: endIso,
     user_name: email,
+    created_by_user_id: userId,
   };
 
   try {
-    let data: Record<string, unknown> | null = null;
-    let error: { message?: string } | null = null;
-    let usedLegacyInsert = false;
-
     // Return only `id` from PostgREST so a stale schema cache on newer columns does not break the insert.
-    const full = await supabase
+    const insertPayload = {
+      ...basePayload,
+      calendar_scope,
+      owner_user_id: ownerUserId,
+      lead_id: leadId,
+    };
+
+    const { data, error } = await supabase
       .from("events")
-      .insert({
-        ...basePayload,
-        calendar_scope,
-        owner_user_id: ownerUserId,
-        lead_id: leadId,
-      })
+      .insert(insertPayload)
       .select("id")
       .single();
 
-    data = full.data as Record<string, unknown> | null;
-    error = full.error;
-
-    if (error && isLegacyCalendarEventsSchemaError(error)) {
-      if (calendar_scope === "personal") {
-        throw new Error(CALENDAR_PERSONAL_REQUIRES_MIGRATION);
-      }
-      usedLegacyInsert = true;
-      const legacy = await supabase
-        .from("events")
-        .insert({ ...basePayload, lead_id: leadId })
-        .select("id")
-        .single();
-      data = legacy.data as Record<string, unknown> | null;
-      error = legacy.error;
-    }
-
     if (error) {
+      if (isLegacyCalendarEventsSchemaError(error)) {
+        if (calendar_scope === "personal") {
+          throw new Error(CALENDAR_PERSONAL_REQUIRES_MIGRATION);
+        }
+        throw new Error(CALENDAR_EVENTS_MIGRATION_HINT);
+      }
       throw toUserError(error, "Could not save the event.");
     }
 
-    const newId = data && typeof (data as { id: unknown }).id === "string" ? (data as { id: string }).id : null;
+    const rowData = data as Record<string, unknown> | null;
+    const newId = rowData && typeof rowData.id === "string" ? rowData.id : null;
     if (!newId) {
       throw new Error("Could not save the event.");
     }
 
     revalidatePath("/calendar", "page");
+    revalidatePath("/tasks");
 
     return normalizeCalendarEventRow({
       id: newId,
@@ -136,8 +136,9 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
       start_time: startIso,
       end_time: endIso,
       user_name: email,
-      calendar_scope: usedLegacyInsert ? "team" : calendar_scope,
-      owner_user_id: usedLegacyInsert ? null : ownerUserId,
+      calendar_scope,
+      owner_user_id: ownerUserId,
+      completed_at: null,
     });
   } catch (error) {
     if (error instanceof Error) {
@@ -161,19 +162,35 @@ export async function deleteCalendarEvent(eventId: string, formData: FormData) {
     throw new Error("You must be signed in to delete an event.");
   }
 
+  const id = eventId.trim();
+
   try {
-    const { error, count } = await supabase.from("events").delete({ count: "exact" }).eq("id", eventId.trim());
+    const { data: beforeRow } = await supabase
+      .from("events")
+      .select("lead_id")
+      .eq("id", id)
+      .maybeSingle();
+    const leadIdRaw = beforeRow && typeof beforeRow === "object" && "lead_id" in beforeRow
+      ? (beforeRow as { lead_id: string | null }).lead_id
+      : null;
+    const leadId = typeof leadIdRaw === "string" && leadIdRaw.trim() ? leadIdRaw.trim() : null;
+
+    const { error, count } = await supabase.from("events").delete({ count: "exact" }).eq("id", id);
 
     if (error) {
       throw toUserError(error, "Could not delete the event.");
     }
 
     if (count == null || count < 1) {
-      console.error("deleteCalendarEvent: delete affected 0 rows", { eventId: eventId.trim() });
+      console.error("deleteCalendarEvent: delete affected 0 rows", { eventId: id });
       throw new Error(EVENT_DELETE_ZERO_ROWS);
     }
 
     revalidatePath("/calendar", "page");
+    revalidatePath("/tasks");
+    if (leadId) {
+      revalidatePath(`/leads/${leadId}`);
+    }
   } catch (error) {
     if (error instanceof Error) {
       throw error;

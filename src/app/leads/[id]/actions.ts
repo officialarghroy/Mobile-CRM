@@ -4,14 +4,39 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
 import { toUserError } from "@/lib/supabaseActionErrors";
 
+/**
+ * Supabase Storage only accepts a strict S3-style key set (no spaces, limited punctuation, ASCII).
+ * Real device filenames (e.g. macOS screenshots) break uploads without this.
+ */
+function sanitizeCrmStorageFileName(originalName: string): string {
+  const raw = (originalName || "").trim();
+  const lastDot = raw.lastIndexOf(".");
+  const base = lastDot > 0 ? raw.slice(0, lastDot) : raw;
+  const extPart = lastDot > 0 ? raw.slice(lastDot + 1) : "";
+
+  const ext =
+    extPart.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 10) || "bin";
+
+  const asciiBase = base
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
+
+  const namePart = asciiBase || "image";
+  return `${namePart}.${ext}`;
+}
+
 export async function createLeadUpdate(leadId: string, formData: FormData) {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user: actionUser },
   } = await supabase.auth.getUser();
   const email = actionUser?.email;
-  const content = String(formData.get("content") ?? "").trim();
-  if (!content || !leadId || !email) return;
+  const contentRaw = String(formData.get("content") ?? "");
+  const content = contentRaw.trim();
+  if (!leadId || !email) return;
 
   try {
     const { data: activeLead, error: leadCheckError } = await supabase
@@ -24,10 +49,35 @@ export async function createLeadUpdate(leadId: string, formData: FormData) {
     if (leadCheckError) throw toUserError(leadCheckError);
     if (!activeLead) return;
 
+    const files = formData.getAll("images");
+    const imageFiles = files
+      .filter((entry): entry is File => entry instanceof File && entry.size > 0)
+      .slice(0, 5);
+
+    if (!content && imageFiles.length === 0) return;
+
+    const imageUrls: string[] = [];
+    for (let i = 0; i < imageFiles.length; i++) {
+      const file = imageFiles[i];
+      const safeName = sanitizeCrmStorageFileName(file.name);
+      const unique = `${Date.now()}-${i}-${Math.random().toString(36).slice(2, 10)}`;
+      const path = `leads/${leadId}/updates/${unique}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("crm-images").upload(path, file, {
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (uploadError) throw toUserError(uploadError);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("crm-images").getPublicUrl(path);
+      imageUrls.push(publicUrl);
+    }
+
     const { error } = await supabase.from("lead_updates").insert({
       lead_id: leadId,
       content,
       created_by: email,
+      image_urls: imageUrls.length ? imageUrls : null,
     });
 
     if (error) {

@@ -32,6 +32,23 @@ export function AppHeaderActions() {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
+            className={`${iconBtnClass} ${isRefreshPending ? "cursor-wait" : ""} disabled:pointer-events-none disabled:opacity-75`}
+            aria-label={isRefreshPending ? "Refreshing" : "Refresh user list"}
+            aria-busy={isRefreshPending}
+            disabled={isRefreshPending}
+            onClick={() => {
+              startRefreshTransition(() => {
+                router.refresh();
+              });
+            }}
+          >
+            <RiRefreshLine
+              className={`h-5 w-5 shrink-0 ${isRefreshPending ? "animate-spin motion-reduce:animate-none" : ""}`}
+              aria-hidden
+            />
+          </button>
+          <button
+            type="button"
             className={iconBtnClass}
             aria-label="Create user"
             onClick={() => setCreateUserOpen(true)}

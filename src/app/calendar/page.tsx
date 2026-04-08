@@ -31,7 +31,7 @@ async function CalendarPageContent() {
   try {
     const extended = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, user_name, calendar_scope, owner_user_id")
+      .select("id, title, start_time, end_time, user_name, calendar_scope, owner_user_id, completed_at")
       .order("start_time", { ascending: true, nullsFirst: false });
 
     let rows: Parameters<typeof normalizeCalendarEventRow>[0][] = [];
