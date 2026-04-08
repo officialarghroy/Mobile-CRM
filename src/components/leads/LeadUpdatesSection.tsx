@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useState, useTransition, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+import { formatInPST, formatLeadUpdateRelativeTime } from "@/lib/timezone";
 
 export type UpdateCardData = {
   id: string;
   content: string;
-  relativeTime: string;
-  fullTimestamp: string;
+  createdAt: string;
   author: string;
 };
 
@@ -20,6 +20,8 @@ type LeadUpdatesSectionProps = {
   viewerEmail: string;
   /** When false, activity history still shows but adding updates is hidden (e.g. Recently deleted). */
   allowAddUpdate?: boolean;
+  /** Rendered after the add-note card (or read-only notice) and before activity history. */
+  belowAddNote?: ReactNode;
 };
 
 export function LeadUpdatesSection({
@@ -27,6 +29,7 @@ export function LeadUpdatesSection({
   createLeadUpdate,
   viewerEmail,
   allowAddUpdate = true,
+  belowAddNote,
 }: LeadUpdatesSectionProps) {
   const router = useRouter();
   const [draft, setDraft] = useState("");
@@ -52,16 +55,11 @@ export function LeadUpdatesSection({
     setDraft("");
 
     const optimisticId = `optimistic-${Date.now()}`;
+    const nowIso = new Date().toISOString();
     const optimisticUpdate: UpdateCardData = {
       id: optimisticId,
       content,
-      relativeTime: "Just now",
-      fullTimestamp: new Date().toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }),
+      createdAt: nowIso,
       author: viewerEmail,
     };
 
@@ -111,6 +109,8 @@ export function LeadUpdatesSection({
         <p className="text-sm text-[var(--text-secondary)]">Activity is read-only while this lead is in Recently deleted.</p>
       )}
 
+      {belowAddNote ? <div className="flex flex-col gap-2">{belowAddNote}</div> : null}
+
       <section className="flex flex-col space-y-5 pb-2" aria-label="Activity history">
         {!updates.length ? (
           <div className="py-6 text-center text-sm text-[var(--text-secondary)]">
@@ -137,8 +137,8 @@ export function LeadUpdatesSection({
                   <p className="crm-meta mt-1">{update.author}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5 text-right">
-                  <p className="crm-meta">{update.relativeTime}</p>
-                  <p className="crm-meta text-[var(--text-tertiary)]">{update.fullTimestamp}</p>
+                  <p className="crm-meta">{formatLeadUpdateRelativeTime(update.createdAt)}</p>
+                  <p className="crm-meta text-[var(--text-tertiary)]">{formatInPST(update.createdAt)}</p>
                 </div>
               </div>
             </div>

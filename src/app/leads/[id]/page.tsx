@@ -5,8 +5,11 @@ import { LeadUpdatesSection, type UpdateCardData } from "@/components/leads/Lead
 import { DeleteLeadSection } from "@/components/leads/DeleteLeadSection";
 import { RestoreLeadButton } from "@/components/leads/RestoreLeadButton";
 import { LeadDetailContactForm } from "@/components/leads/LeadDetailContactForm";
+import { LeadDetailScheduleEvent } from "@/components/leads/LeadDetailScheduleEvent";
 import { isMissingDeletedAtColumnError, isMissingExtendedLeadColumnsError } from "@/lib/leadsSoftDeleteSupport";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { formatInPST } from "@/lib/timezone";
+import { fetchTeamMembers } from "@/lib/teamAccess";
 import { createLeadUpdate, updateLead } from "./actions";
 
 type SupabaseError = {
@@ -48,41 +51,6 @@ type LeadDetailPageProps = {
   params: Promise<{ id: string }> | { id: string };
 };
 
-function formatFullTimestamp(createdAt: string): string {
-  return new Date(createdAt).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function formatRelativeTimestamp(createdAt: string): string {
-  const now = Date.now();
-  const then = new Date(createdAt).getTime();
-  const diffInSeconds = Math.max(0, Math.floor((now - then) / 1000));
-
-  if (diffInSeconds < 60) return "Just now";
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours}h ago`;
-
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays}d ago`;
-
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 5) return `${diffInWeeks}w ago`;
-
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) return `${diffInMonths}mo ago`;
-
-  const diffInYears = Math.floor(diffInDays / 365);
-  return `${diffInYears}y ago`;
-}
-
 export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
   const resolvedParams = await params;
   const leadId = resolvedParams?.id ?? "";
@@ -92,6 +60,8 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     data: { user },
   } = await supabase.auth.getUser();
   const viewerEmail = user?.email ?? "";
+  const viewerUserId = user?.id ?? null;
+  const { rows: teamMemberRows } = await fetchTeamMembers(supabase);
 
   let leadName = formatLeadNameFromSlug(leadId) || "Lead Detail";
   let leadBusiness = "";
@@ -174,8 +144,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
     updates = (updatesData as LeadUpdate[]).map((update) => ({
       id: update.id,
       content: update.content,
-      relativeTime: formatRelativeTimestamp(update.created_at),
-      fullTimestamp: formatFullTimestamp(update.created_at),
+      createdAt: update.created_at,
       author: update.created_by || "Unknown",
     }));
   } catch (error) {
@@ -228,7 +197,7 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
               .
             </p>
             {deletedAt ? (
-              <p className="crm-meta mt-2 text-amber-900/80">Deleted {formatFullTimestamp(deletedAt)}</p>
+              <p className="crm-meta mt-2 text-amber-900/80">Deleted {formatInPST(deletedAt)}</p>
             ) : null}
           </div>
         ) : null}
@@ -246,6 +215,17 @@ export default async function LeadDetailPage({ params }: LeadDetailPageProps) {
           createLeadUpdate={createLeadUpdate.bind(null, leadId)}
           viewerEmail={viewerEmail}
           allowAddUpdate={!isDeleted}
+          belowAddNote={
+            !isDeleted ? (
+              <LeadDetailScheduleEvent
+                leadId={leadId}
+                leadName={leadName}
+                teamMembers={teamMemberRows}
+                viewerUserId={viewerUserId}
+                viewerEmail={viewerEmail}
+              />
+            ) : null
+          }
         />
 
         {isDeleted ? (

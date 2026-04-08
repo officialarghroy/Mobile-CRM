@@ -345,6 +345,9 @@ export function CalendarPageClient({
           }
           onCreated={handleEventCreated}
           onClose={() => setNewEventOpenedAt(null)}
+          teamMembers={teamMembers}
+          viewerUserId={viewerUserId}
+          viewerEmail={viewerEmail}
         />
       ) : null}
 

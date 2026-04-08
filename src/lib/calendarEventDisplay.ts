@@ -1,3 +1,5 @@
+import { PST_TIMEZONE } from "@/lib/timezone";
+
 /** Shared vs private event; enforced by RLS on `events`. */
 export type CalendarScope = "team" | "personal";
 
@@ -48,19 +50,19 @@ export function isCalendarEventMine(
   return false;
 }
 
+const pstTimeOnly: Intl.DateTimeFormatOptions = {
+  timeZone: PST_TIMEZONE,
+  hour: "numeric",
+  minute: "2-digit",
+};
+
 export function formatCalendarTimeRange(startTime: string | null, endTime: string | null): string {
   if (!startTime && !endTime) return "Time not set";
   const start = startTime
-    ? new Date(startTime).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      })
+    ? new Intl.DateTimeFormat("en-US", pstTimeOnly).format(new Date(startTime))
     : "TBD";
   const end = endTime
-    ? new Date(endTime).toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-      })
+    ? new Intl.DateTimeFormat("en-US", pstTimeOnly).format(new Date(endTime))
     : "TBD";
   return `${start} - ${end}`;
 }

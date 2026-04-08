@@ -8,6 +8,7 @@ import {
   RiCalendarEventLine,
   RiCloseLine,
   RiDeleteBinLine,
+  RiListCheck2,
   RiLogoutBoxRLine,
   RiTeamLine,
   RiUserLine,
@@ -143,6 +144,14 @@ export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
                   >
                     <RiCalendarEventLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
                     Calendar
+                  </Link>
+                  <Link
+                    href="/tasks"
+                    onClick={() => setIsOpen(false)}
+                    className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                  >
+                    <RiListCheck2 className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                    My Tasks
                   </Link>
                   {initialProfile.hasSupabaseAuth ? (
                     <>

@@ -4,19 +4,23 @@ import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
 import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
 import { calendarScopeLabel, isCalendarEventMine } from "@/lib/calendarEventDisplay";
+import { pstWeekdayIndexSunday0, startOfPSTCalendarDayUtc } from "@/lib/timezone";
 import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "./calendarTypes";
 import {
   TIMELINE_HOUR_HEIGHT_PX,
   TIMELINE_HOURS,
-  eventsForLocalDay,
+  eventsForPstDay,
   formatHourLabel,
-  placeEventsForDay,
+  placeEventsForPstDay,
 } from "./dayTimelineUtils";
+
+const WEEKDAY_SUN0 = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"] as const;
 
 type DayTimelineProps = {
   className?: string;
-  selectedDate: Date;
+  /** PST calendar date YYYY-MM-DD (America/Los_Angeles). */
+  selectedPstDateKey: string;
   events: CalendarGridEvent[];
   viewerEmail: string;
   viewerUserId: string | null;
@@ -36,18 +40,18 @@ function eventBlockClasses(event: CalendarGridEvent, viewerEmail: string, viewer
 
 export function DayTimeline({
   className = "",
-  selectedDate,
+  selectedPstDateKey,
   events,
   viewerEmail,
   viewerUserId,
   creatorLookup,
 }: DayTimelineProps) {
-  const dayEvents = eventsForLocalDay(events, selectedDate);
-  const placed = placeEventsForDay(selectedDate, dayEvents);
+  const dayEvents = eventsForPstDay(events, selectedPstDateKey);
+  const placed = placeEventsForPstDay(selectedPstDateKey, dayEvents);
 
-  /** Fixed English abbreviations: `toLocaleDateString(undefined)` differs between Node and browser. */
-  const weekdayShort = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][selectedDate.getDay()] ?? "—";
-  const dayNum = selectedDate.getDate();
+  const start = startOfPSTCalendarDayUtc(selectedPstDateKey);
+  const weekdayShort = WEEKDAY_SUN0[pstWeekdayIndexSunday0(start)] ?? "—";
+  const dayNum = Number(selectedPstDateKey.split("-")[2]) || 0;
 
   const totalHeight = TIMELINE_HOURS * TIMELINE_HOUR_HEIGHT_PX;
 

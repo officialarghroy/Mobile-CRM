@@ -5,9 +5,18 @@ import { RiArrowLeftSLine, RiArrowRightSLine } from "react-icons/ri";
 import { DayTimeline } from "@/components/calendar/DayTimeline";
 import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
-import { dayKey, parseEventStart } from "@/components/calendar/dayTimelineUtils";
+import { parseEventStart } from "@/components/calendar/dayTimelineUtils";
 import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
 import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
+import {
+  addGregorianMonths,
+  currentPstYearMonth,
+  daysInGregorianMonth,
+  formatPstMonthYear,
+  pstDateKeyFromInstant,
+  pstWeekdayIndexSunday0,
+  startOfPSTCalendarDayUtc,
+} from "@/lib/timezone";
 import { Button } from "@/components/ui/Button";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 
@@ -22,40 +31,18 @@ type CalendarGridProps = {
   onAddEvent?: () => void;
 };
 
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
 function dayKeysWithTimedEvents(events: CalendarGridEvent[]): Set<string> {
   const s = new Set<string>();
   for (const e of events) {
     const start = parseEventStart(e.start_time);
     if (!start) continue;
-    s.add(dayKey(start));
+    s.add(pstDateKeyFromInstant(start));
   }
   return s;
-}
-
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
-function addMonths(d: Date, n: number): Date {
-  return new Date(d.getFullYear(), d.getMonth() + n, 1);
-}
-
-function sameLocalDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function clampDayInMonth(year: number, month: number, preferredDay: number): Date {
-  const last = new Date(year, month + 1, 0).getDate();
-  const d = Math.min(preferredDay, last);
-  return new Date(year, month, d);
-}
-
-function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 const WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -68,45 +55,60 @@ export function CalendarGrid({
   creatorLookup,
   onAddEvent,
 }: CalendarGridProps) {
-  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const t = new Date();
-    return new Date(t.getFullYear(), t.getMonth(), t.getDate());
-  });
-  const applyVisibleMonth = useCallback((nextMonthStart: Date) => {
-    const next = startOfMonth(nextMonthStart);
-    setVisibleMonth(next);
-    setSelectedDate((sel) => clampDayInMonth(next.getFullYear(), next.getMonth(), sel.getDate()));
-  }, []);
+  const [visibleMonth, setVisibleMonth] = useState(() => currentPstYearMonth());
+  const [selectedPstKey, setSelectedPstKey] = useState(() => pstDateKeyFromInstant(new Date()));
+  const [todayPstKey, setTodayPstKey] = useState(() => pstDateKeyFromInstant(new Date()));
 
   const goPrevMonth = useCallback(() => {
-    applyVisibleMonth(addMonths(visibleMonth, -1));
-  }, [applyVisibleMonth, visibleMonth]);
+    setVisibleMonth((vm) => {
+      const next = addGregorianMonths(vm.year, vm.monthIndex, -1);
+      setSelectedPstKey((prevKey) => {
+        const [sy, sm, sd] = prevKey.split("-").map(Number);
+        const inCurrentVm = sy === vm.year && sm - 1 === vm.monthIndex;
+        let d = inCurrentVm ? sd : 1;
+        const dim = daysInGregorianMonth(next.year, next.monthIndex);
+        d = Math.min(d, dim);
+        return `${next.year}-${pad2(next.monthIndex + 1)}-${pad2(d)}`;
+      });
+      return next;
+    });
+  }, []);
 
   const goNextMonth = useCallback(() => {
-    applyVisibleMonth(addMonths(visibleMonth, 1));
-  }, [applyVisibleMonth, visibleMonth]);
+    setVisibleMonth((vm) => {
+      const next = addGregorianMonths(vm.year, vm.monthIndex, 1);
+      setSelectedPstKey((prevKey) => {
+        const [sy, sm, sd] = prevKey.split("-").map(Number);
+        const inCurrentVm = sy === vm.year && sm - 1 === vm.monthIndex;
+        let d = inCurrentVm ? sd : 1;
+        const dim = daysInGregorianMonth(next.year, next.monthIndex);
+        d = Math.min(d, dim);
+        return `${next.year}-${pad2(next.monthIndex + 1)}-${pad2(d)}`;
+      });
+      return next;
+    });
+  }, []);
 
   const goToday = useCallback(() => {
-    const t = new Date();
-    const start = startOfMonth(t);
-    setVisibleMonth(start);
-    setSelectedDate(new Date(t.getFullYear(), t.getMonth(), t.getDate()));
+    setVisibleMonth(currentPstYearMonth());
+    setSelectedPstKey(pstDateKeyFromInstant(new Date()));
   }, []);
 
   const { weeks, unscheduled } = useMemo(() => {
-    const first = startOfMonth(visibleMonth);
-    const startPad = first.getDay();
-    const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    const { year, monthIndex } = visibleMonth;
+    const daysInMonth = daysInGregorianMonth(year, monthIndex);
+    const firstKey = `${year}-${pad2(monthIndex + 1)}-01`;
+    const firstInstant = startOfPSTCalendarDayUtc(firstKey);
+    const startPad = pstWeekdayIndexSunday0(firstInstant);
 
-    const cells: (Date | null)[] = [];
+    const cells: (string | null)[] = [];
     for (let i = 0; i < startPad; i++) cells.push(null);
     for (let d = 1; d <= daysInMonth; d++) {
-      cells.push(new Date(first.getFullYear(), first.getMonth(), d));
+      cells.push(`${year}-${pad2(monthIndex + 1)}-${pad2(d)}`);
     }
     while (cells.length % 7 !== 0) cells.push(null);
 
-    const w: (Date | null)[][] = [];
+    const w: (string | null)[][] = [];
     for (let i = 0; i < cells.length; i += 7) {
       w.push(cells.slice(i, i + 7));
     }
@@ -118,14 +120,11 @@ export function CalendarGrid({
 
   const timedDayKeys = useMemo(() => dayKeysWithTimedEvents(events), [events]);
 
-  const monthTitle = visibleMonth.toLocaleString("en-US", { month: "long", year: "numeric" });
-
-  const [today, setToday] = useState(() => startOfLocalDay(new Date()));
+  const monthTitle = formatPstMonthYear(visibleMonth.year, visibleMonth.monthIndex);
 
   useEffect(() => {
     const syncToday = () => {
-      const next = startOfLocalDay(new Date());
-      setToday((prev) => (sameLocalDay(prev, next) ? prev : next));
+      setTodayPstKey(pstDateKeyFromInstant(new Date()));
     };
     const intervalId = window.setInterval(syncToday, 60_000);
     document.addEventListener("visibilitychange", syncToday);
@@ -184,20 +183,20 @@ export function CalendarGrid({
         </div>
         {weeks.map((row, wi) => (
           <div key={wi} className="grid grid-cols-7 items-stretch border-b border-[var(--border)] last:border-b-0">
-            {row.map((day, di) => {
-              if (!day) {
+            {row.map((pstKey, di) => {
+              if (!pstKey) {
                 return <div key={`empty-${wi}-${di}`} className="min-h-0 bg-[var(--bg)]/40" aria-hidden />;
               }
-              const key = dayKey(day);
-              const isToday = sameLocalDay(day, today);
-              const isSelected = sameLocalDay(day, selectedDate);
-              const hasTimedEvent = timedDayKeys.has(key);
+              const isToday = pstKey === todayPstKey;
+              const isSelected = pstKey === selectedPstKey;
+              const hasTimedEvent = timedDayKeys.has(pstKey);
+              const dayNum = Number(pstKey.split("-")[2]) || 0;
 
               return (
-                <div key={key} className="flex min-h-0 border-r border-[var(--border)] last:border-r-0">
+                <div key={pstKey} className="flex min-h-0 border-r border-[var(--border)] last:border-r-0">
                   <button
                     type="button"
-                    onClick={() => setSelectedDate(new Date(day.getFullYear(), day.getMonth(), day.getDate()))}
+                    onClick={() => setSelectedPstKey(pstKey)}
                     className={`flex min-h-[2.75rem] w-full flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors hover:bg-[var(--surface-muted)] ${
                       isToday && !isSelected ? "bg-[var(--accent-muted)]/50" : ""
                     }`}
@@ -211,7 +210,7 @@ export function CalendarGrid({
                             : "text-[var(--text-primary)]"
                       }`}
                     >
-                      {day.getDate()}
+                      {dayNum}
                     </span>
                     <span
                       className={`h-1 w-1 shrink-0 rounded-full ${
@@ -236,7 +235,7 @@ export function CalendarGrid({
         aria-label="Day schedule"
       >
         <DayTimeline
-          selectedDate={selectedDate}
+          selectedPstDateKey={selectedPstKey}
           events={events}
           viewerEmail={viewerEmail}
           viewerUserId={viewerUserId}

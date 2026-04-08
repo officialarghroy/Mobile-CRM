@@ -1,19 +1,12 @@
 import type { CalendarGridEvent } from "./calendarTypes";
+import {
+  endOfPSTCalendarDayUtc,
+  pstDateKeyFromInstant,
+  startOfPSTCalendarDayUtc,
+} from "@/lib/timezone";
 
 export const TIMELINE_HOUR_HEIGHT_PX = 48;
 export const TIMELINE_HOURS = 24;
-
-export function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-}
-
-export function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-}
-
-export function endOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-}
 
 export function parseEventStart(iso: string | null): Date | null {
   if (!iso?.trim()) return null;
@@ -29,13 +22,12 @@ export function parseEventEnd(iso: string | null, start: Date): Date {
   return new Date(start.getTime() + 60 * 60 * 1000);
 }
 
-/** Events whose start_time falls on this local calendar day. */
-export function eventsForLocalDay(events: CalendarGridEvent[], day: Date): CalendarGridEvent[] {
-  const key = dayKey(day);
+/** Events whose start_time falls on this PST calendar day (YYYY-MM-DD in America/Los_Angeles). */
+export function eventsForPstDay(events: CalendarGridEvent[], pstDateKey: string): CalendarGridEvent[] {
   return events.filter((e) => {
     const start = parseEventStart(e.start_time);
     if (!start) return false;
-    return dayKey(start) === key;
+    return pstDateKeyFromInstant(start) === pstDateKey;
   });
 }
 
@@ -47,12 +39,9 @@ export type PlacedEvent = {
   clippedEnd: Date;
 };
 
-export function placeEventsForDay(
-  day: Date,
-  events: CalendarGridEvent[],
-): PlacedEvent[] {
-  const dayStart = startOfLocalDay(day);
-  const dayEnd = endOfLocalDay(day);
+export function placeEventsForPstDay(pstDateKey: string, events: CalendarGridEvent[]): PlacedEvent[] {
+  const dayStart = startOfPSTCalendarDayUtc(pstDateKey);
+  const dayEnd = endOfPSTCalendarDayUtc(pstDateKey);
   const minutePx = TIMELINE_HOUR_HEIGHT_PX / 60;
   const totalMinutes = TIMELINE_HOURS * 60;
 
@@ -67,8 +56,7 @@ export function placeEventsForDay(
     const clipEnd = rawEnd > dayEnd ? dayEnd : rawEnd;
     if (clipEnd <= clipStart) continue;
 
-    const startMin =
-      (clipStart.getTime() - dayStart.getTime()) / 60000;
+    const startMin = (clipStart.getTime() - dayStart.getTime()) / 60000;
     const endMin = (clipEnd.getTime() - dayStart.getTime()) / 60000;
     const durMin = endMin - startMin;
 
@@ -91,8 +79,8 @@ export function placeEventsForDay(
 }
 
 /**
- * Stable across SSR and the browser. Do not use `toLocaleTimeString(undefined)` here:
- * Node and the client often disagree (e.g. "12 AM" vs "00") and cause hydration errors.
+ * Stable across SSR and the browser. Hour labels are wall-clock hours in PST for the selected day
+ * (0 = midnight America/Los_Angeles through 23).
  */
 export function formatHourLabel(hour: number): string {
   const h12 = hour % 12 === 0 ? 12 : hour % 12;

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+import { formatLeadsListActivityLabel } from "@/lib/timezone";
 
 type LeadFilter = "all" | "lead" | "client";
 
@@ -34,6 +35,15 @@ export function LeadsListSection({ leads }: LeadsListSectionProps) {
     if (filter === "all") return leads;
     return leads.filter((lead) => lead.type === filter);
   }, [filter, leads]);
+
+  const rowsWithPstLabel = useMemo(
+    () =>
+      filteredLeads.map((lead) => ({
+        ...lead,
+        pstActivityLabel: formatLeadsListActivityLabel(lead.activityAt),
+      })),
+    [filteredLeads],
+  );
 
   return (
     <section className="flex flex-col space-y-4" aria-label="Leads list">
@@ -75,13 +85,13 @@ export function LeadsListSection({ leads }: LeadsListSectionProps) {
         </div>
       </div>
 
-      {!filteredLeads.length ? (
+      {!rowsWithPstLabel.length ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           <p>{leads.length ? "No entries match this filter" : "No leads yet - add your first lead"}</p>
         </div>
       ) : (
         <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-          {filteredLeads.map((lead) => (
+          {rowsWithPstLabel.map((lead) => (
             <Link
               key={lead.id}
               href={`/leads/${lead.id}`}
@@ -116,7 +126,7 @@ export function LeadsListSection({ leads }: LeadsListSectionProps) {
                     suppressHydrationWarning
                     className="crm-meta shrink-0 pt-0.5 text-right font-medium text-[var(--text-tertiary)]"
                   >
-                    {lead.timestamp}
+                    {lead.pstActivityLabel}
                   </time>
                 </div>
               </div>

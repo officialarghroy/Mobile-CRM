@@ -31,6 +31,15 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
   const title = String(formData.get("title") ?? "").trim();
   const startRaw = String(formData.get("start_time") ?? "").trim();
   const endRaw = String(formData.get("end_time") ?? "").trim();
+  const leadIdField = formData.get("lead_id");
+  const leadId =
+    typeof leadIdField === "string" && leadIdField.trim() ? leadIdField.trim() : null;
+  const assignedUserIdField = formData.get("assigned_user_id");
+  const assignedUserId =
+    typeof assignedUserIdField === "string" && assignedUserIdField.trim()
+      ? assignedUserIdField.trim()
+      : null;
+  const ownerUserId = assignedUserId || userId;
 
   if (!title) {
     throw new Error("Add an event title.");
@@ -87,7 +96,8 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
       .insert({
         ...basePayload,
         calendar_scope,
-        owner_user_id: userId,
+        owner_user_id: ownerUserId,
+        lead_id: leadId,
       })
       .select("id")
       .single();
@@ -100,7 +110,11 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
         throw new Error(CALENDAR_PERSONAL_REQUIRES_MIGRATION);
       }
       usedLegacyInsert = true;
-      const legacy = await supabase.from("events").insert(basePayload).select("id").single();
+      const legacy = await supabase
+        .from("events")
+        .insert({ ...basePayload, lead_id: leadId })
+        .select("id")
+        .single();
       data = legacy.data as Record<string, unknown> | null;
       error = legacy.error;
     }
@@ -123,7 +137,7 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
       end_time: endIso,
       user_name: email,
       calendar_scope: usedLegacyInsert ? "team" : calendar_scope,
-      owner_user_id: usedLegacyInsert ? null : userId,
+      owner_user_id: usedLegacyInsert ? null : ownerUserId,
     });
   } catch (error) {
     if (error instanceof Error) {
