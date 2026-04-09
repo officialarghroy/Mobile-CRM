@@ -5,8 +5,9 @@
  * - Navigations are network-only; offline falls back to a static shell page.
  * - Bump CACHE_NAME when PRECACHE_URLS change so old shells are deleted on activate.
  * - Client reloads on new worker (RegisterServiceWorker) so installs pick up new sw.js/fast.
+ * - Keep theme colors in sync: public/manifest.json, public/offline.html, src/app/layout.tsx (viewport.themeColor).
  */
-const CACHE_NAME = "crm-pwa-shell-v6";
+const CACHE_NAME = "crm-pwa-shell-v7";
 const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/Logo.webp"];
 
 self.addEventListener("install", (event) => {

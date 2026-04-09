@@ -15,13 +15,25 @@
   "icons": [
     {
       "src": "/Logo.webp",
-      "sizes": "192x192 512x512",
+      "sizes": "192x192",
       "type": "image/webp",
       "purpose": "any"
     },
     {
       "src": "/Logo.webp",
-      "sizes": "192x192 512x512",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/Logo.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/Logo.webp",
+      "sizes": "512x512",
       "type": "image/webp",
       "purpose": "maskable"
     }
@@ -32,14 +44,21 @@
       "short_name": "Leads",
       "description": "Open leads",
       "url": "/leads",
-      "icons": [{ "src": "/Logo.webp", "sizes": "192x192 512x512", "type": "image/webp" }]
+      "icons": [{ "src": "/Logo.webp", "sizes": "192x192", "type": "image/webp" }]
     },
     {
       "name": "Calendar",
       "short_name": "Calendar",
       "description": "Open calendar",
       "url": "/calendar",
-      "icons": [{ "src": "/Logo.webp", "sizes": "192x192 512x512", "type": "image/webp" }]
+      "icons": [{ "src": "/Logo.webp", "sizes": "192x192", "type": "image/webp" }]
+    },
+    {
+      "name": "My Tasks",
+      "short_name": "Tasks",
+      "description": "Open your tasks",
+      "url": "/tasks",
+      "icons": [{ "src": "/Logo.webp", "sizes": "192x192", "type": "image/webp" }]
     }
   ]
 }

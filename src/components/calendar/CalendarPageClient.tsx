@@ -205,6 +205,10 @@ export function CalendarPageClient({
   );
   const [newEventOpenedAt, setNewEventOpenedAt] = useState<number | null>(null);
   const [stagedEvents, setStagedEvents] = useState<CalendarEventRow[]>([]);
+  const [calendarFocusStart, setCalendarFocusStart] = useState<{
+    startIso: string;
+    nonce: number;
+  } | null>(null);
 
   useEffect(() => {
     setView(viewFromSearchParams(searchParams));
@@ -300,21 +304,33 @@ export function CalendarPageClient({
     [replaceQueryParams],
   );
 
+  const clearCalendarFocus = useCallback(() => setCalendarFocusStart(null), []);
+
   const handleEventCreated = useCallback(
     (row: CalendarEventRow) => {
       setStagedEvents((prev) => (prev.some((e) => e.id === row.id) ? prev : [...prev, row]));
-      if (view !== "list" || !viewerUserId) return;
-      if (row.calendar_scope === "personal") {
-        setListShowAndUrl({ type: "member", userId: viewerUserId });
-        return;
+
+      if (viewerUserId) {
+        if (row.calendar_scope === "personal") {
+          setListShowAndUrl({ type: "member", userId: viewerUserId });
+        } else if (
+          row.calendar_scope === "team" &&
+          listShow.type === "member" &&
+          listShow.userId === viewerUserId
+        ) {
+          setListShowAndUrl({ type: "team" });
+        }
       }
-      const onOwnPersonalList =
-        listShow.type === "member" && listShow.userId === viewerUserId;
-      if (row.calendar_scope === "team" && onOwnPersonalList) {
-        setListShowAndUrl({ type: "team" });
+
+      const start = row.start_time?.trim();
+      if (start) {
+        setCalendarFocusStart((prev) => ({
+          startIso: start,
+          nonce: (prev?.nonce ?? 0) + 1,
+        }));
       }
     },
-    [listShow, setListShowAndUrl, view, viewerUserId],
+    [listShow, setListShowAndUrl, viewerUserId],
   );
 
   const activeSegment =
@@ -421,13 +437,13 @@ export function CalendarPageClient({
 
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="crm-section-label">{listFilterHint}</p>
-          <div className="flex min-w-0 shrink-0 flex-col items-stretch gap-1 sm:items-end">
+          <div className="flex min-w-0 w-full shrink-0 flex-col items-stretch gap-1 sm:w-auto sm:items-end">
             {canAddEventsOnListView ? (
               <Button type="button" className="px-4" onClick={() => setNewEventOpenedAt(Date.now())}>
                 Add Event
               </Button>
             ) : (
-              <p className="max-w-md text-right text-xs text-[var(--text-secondary)]">
+              <p className="max-w-md text-left text-xs leading-snug text-[var(--text-secondary)]">
                 Only this teammate can add events from this list view. Switch to Team, your own name, or use Calendar.
               </p>
             )}
@@ -456,6 +472,8 @@ export function CalendarPageClient({
           viewerUserId={viewerUserId}
           creatorLookup={creatorLookup}
           onAddEvent={() => setNewEventOpenedAt(Date.now())}
+          focusStart={calendarFocusStart}
+          onFocusStartHandled={clearCalendarFocus}
         />
       </div>
     </div>

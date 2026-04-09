@@ -13,7 +13,7 @@ type TaskCompleteControlProps = {
 };
 
 /**
- * Google Calendar / Tasks style: small ring on the left, solid fill + check when done.
+ * Small ring when pending; solid green circle with white check when done.
  */
 export function TaskCompleteControl({ eventId, completed, disabled = false }: TaskCompleteControlProps) {
   const router = useRouter();
@@ -59,12 +59,14 @@ export function TaskCompleteControl({ eventId, completed, disabled = false }: Ta
         className={[
           "flex size-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] bg-transparent transition-colors",
           checked
-            ? "border-transparent bg-[var(--accent-strong)]"
+            ? "border-transparent bg-[var(--success)] shadow-[0_1px_2px_rgba(5,150,105,0.35)]"
             : "border-[var(--text-tertiary)]/55",
         ].join(" ")}
         aria-hidden
       >
-        {checked ? <RiCheckLine className="size-[11px] text-white" strokeWidth={3.5} /> : null}
+        {checked ? (
+          <RiCheckLine className="size-3 text-white drop-shadow-[0_0.5px_0_rgba(0,0,0,0.12)]" strokeWidth={3.5} />
+        ) : null}
       </span>
       <span className="sr-only">{checked ? "Completed" : "Not done"}</span>
     </button>

@@ -139,7 +139,7 @@ function TaskList({
                     prefetch
                     className="inline-flex w-fit rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)] shadow-sm"
                   >
-                    View lead
+                    View details
                   </Link>
                 ) : null}
                 </div>
@@ -246,7 +246,7 @@ function AssignedTaskList({
                     prefetch
                     className="inline-flex w-fit rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--accent-strong)] shadow-sm"
                   >
-                    View lead
+                    View details
                   </Link>
                 ) : null}
                 </div>

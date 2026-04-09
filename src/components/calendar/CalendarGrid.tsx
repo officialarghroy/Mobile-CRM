@@ -29,6 +29,9 @@ type CalendarGridProps = {
   viewerUserId: string | null;
   creatorLookup: CreatorLookup;
   onAddEvent?: () => void;
+  /** Jump the visible month and selected day to this event’s start (PST). */
+  focusStart?: { startIso: string; nonce: number } | null;
+  onFocusStartHandled?: () => void;
 };
 
 function pad2(n: number): string {
@@ -54,6 +57,8 @@ export function CalendarGrid({
   viewerUserId,
   creatorLookup,
   onAddEvent,
+  focusStart,
+  onFocusStartHandled,
 }: CalendarGridProps) {
   const [visibleMonth, setVisibleMonth] = useState(() => currentPstYearMonth());
   const [selectedPstKey, setSelectedPstKey] = useState(() => pstDateKeyFromInstant(new Date()));
@@ -135,6 +140,26 @@ export function CalendarGrid({
       window.removeEventListener("focus", syncToday);
     };
   }, []);
+
+  useEffect(() => {
+    if (!focusStart?.startIso?.trim()) return;
+    const start = parseEventStart(focusStart.startIso);
+    if (!start) {
+      onFocusStartHandled?.();
+      return;
+    }
+    const pstKey = pstDateKeyFromInstant(start);
+    const parts = pstKey.split("-").map(Number);
+    const y = parts[0];
+    const mo = parts[1];
+    if (parts.length !== 3 || [y, mo, parts[2]].some((n) => Number.isNaN(n))) {
+      onFocusStartHandled?.();
+      return;
+    }
+    setVisibleMonth({ year: y, monthIndex: mo - 1 });
+    setSelectedPstKey(pstKey);
+    onFocusStartHandled?.();
+  }, [focusStart, onFocusStartHandled]);
 
   return (
     <div className={`flex min-h-0 min-w-0 flex-1 flex-col gap-5 ${className}`.trim()}>

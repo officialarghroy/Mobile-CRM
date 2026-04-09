@@ -49,7 +49,8 @@ export function LeadUpdatesSection({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [draft, setDraft] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  /** Full-screen image URL (draft blob URL or hosted activity image URL). */
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [updates, setUpdates] = useState<UpdateCardData[]>(initialUpdates);
   const [showSaved, setShowSaved] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -67,13 +68,22 @@ export function LeadUpdatesSection({
   }, [previewUrls]);
 
   useEffect(() => {
-    if (previewIndex === null) return;
+    if (!lightboxUrl) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [previewIndex]);
+  }, [lightboxUrl]);
+
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxUrl(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxUrl]);
 
   useEffect(() => {
     setUpdates(initialUpdates);
@@ -101,17 +111,27 @@ export function LeadUpdatesSection({
       }
       return next;
     });
-    setPreviewIndex(null);
+    setLightboxUrl(null);
     input.value = "";
+
+    // After the file dialog closes, focus often moves to the first preview button, which
+    // draws a focus ring only on that thumbnail. Blur it so all previews look the same.
+    window.setTimeout(() => {
+      const container = document.querySelector("[data-lead-update-previews]");
+      const active = document.activeElement;
+      if (
+        container &&
+        active instanceof HTMLElement &&
+        container.contains(active)
+      ) {
+        active.blur();
+      }
+    }, 0);
   };
 
   const removeImage = (index: number) => {
-    setPreviewIndex((prev) => {
-      if (prev === null) return null;
-      if (prev === index) return null;
-      if (prev > index) return prev - 1;
-      return prev;
-    });
+    const urlBeingRemoved = previewUrls[index];
+    setLightboxUrl((prev) => (prev === urlBeingRemoved ? null : prev));
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -201,7 +221,7 @@ export function LeadUpdatesSection({
         await createLeadUpdate(formData);
         setShowSaved(true);
         setSelectedFiles([]);
-        setPreviewIndex(null);
+        setLightboxUrl(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         router.refresh();
       } catch (error) {
@@ -215,11 +235,6 @@ export function LeadUpdatesSection({
       }
     });
   };
-
-  const fullscreenUrl =
-    previewIndex !== null && previewUrls[previewIndex]
-      ? previewUrls[previewIndex]
-      : null;
 
   return (
     <>
@@ -252,7 +267,10 @@ export function LeadUpdatesSection({
                 onChange={handleFileChange}
               />
               {selectedFiles.length > 0 ? (
-                <div className="flex gap-2 overflow-x-auto pb-1 pt-1 [-webkit-overflow-scrolling:touch]">
+                <div
+                  data-lead-update-previews
+                  className="flex gap-2 overflow-x-auto pb-1 pt-1 [-webkit-overflow-scrolling:touch]"
+                >
                   {selectedFiles.map((file, index) => {
                     const url = previewUrls[index];
                     return (
@@ -262,14 +280,14 @@ export function LeadUpdatesSection({
                       >
                         <button
                           type="button"
-                          onClick={() => setPreviewIndex(index)}
-                          className="block cursor-pointer rounded-md border-0 bg-transparent p-0 touch-manipulation"
+                          onClick={() => setLightboxUrl(url)}
+                          className="block cursor-pointer rounded-md border-0 bg-transparent p-0 touch-manipulation outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
                           aria-label={`View image ${index + 1} full screen`}
                         >
                           <img
                             src={url}
                             alt=""
-                            className="h-20 w-20 rounded-md border border-[var(--border)] object-cover"
+                            className="h-20 w-20 rounded-md object-cover ring-1 ring-inset ring-[var(--border)]/70"
                           />
                         </button>
                         <button
@@ -341,10 +359,10 @@ export function LeadUpdatesSection({
                     : "bg-[var(--surface)]"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3 pl-1">
-                  <div className="min-w-0 flex-1">
+                <div className="flex flex-col gap-2.5 pl-1">
+                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                     <p
-                      className={`break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere] ${
+                      className={`min-w-0 flex-1 break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere] ${
                         index === 0
                           ? "text-[var(--text-primary)]"
                           : "text-[var(--text-primary)]/95"
@@ -356,26 +374,50 @@ export function LeadUpdatesSection({
                           ? "Photo attachment"
                           : update.content}
                     </p>
-                    {update.image_urls?.length ? (
-                      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]">
-                        {update.image_urls.map((url) => (
-                          <img
-                            key={url}
-                            src={url}
-                            alt=""
-                            className="h-20 w-20 shrink-0 rounded-lg object-cover"
-                          />
+                    <p
+                      className="crm-meta shrink-0 [overflow-wrap:anywhere] sm:max-w-[min(100%,14rem)] sm:text-right"
+                      title={`${formatLeadUpdateRelativeTime(update.createdAt)} · ${formatInPST(update.createdAt)}`}
+                    >
+                      <span className="text-[var(--text-secondary)]">
+                        {formatLeadUpdateRelativeTime(update.createdAt)}
+                      </span>
+                      <span className="mx-1.5 text-[var(--text-tertiary)]/50" aria-hidden>
+                        ·
+                      </span>
+                      <span className="text-[var(--text-tertiary)]">{formatInPST(update.createdAt)}</span>
+                    </p>
+                  </div>
+                  {update.image_urls?.length ? (
+                    <div className="min-w-0 rounded-xl border border-[var(--border)]/70 bg-[var(--surface-muted)]/50 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                      <div className="flex gap-2 overflow-x-auto pb-0.5 [-webkit-overflow-scrolling:touch]">
+                        {update.image_urls.map((url, imgIndex) => (
+                          <button
+                            key={`${update.id}-${imgIndex}-${url}`}
+                            type="button"
+                            title="Double-click to view full size"
+                            aria-label="View attachment full size"
+                            onDoubleClick={() => setLightboxUrl(url)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                setLightboxUrl(url);
+                              }
+                            }}
+                            className="h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-lg border border-[var(--border)]/80 bg-[var(--surface)] p-0 shadow-sm transition-[border-color,box-shadow] hover:border-[var(--border)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                          >
+                            <img
+                              src={url}
+                              alt=""
+                              className="pointer-events-none h-full w-full cursor-zoom-in object-cover"
+                            />
+                          </button>
                         ))}
                       </div>
-                    ) : null}
-                    <p className="crm-meta mt-1">{update.author}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2 pt-0.5 text-right">
-                    <p className="crm-meta">
-                      {formatLeadUpdateRelativeTime(update.createdAt)}
-                    </p>
-                    <p className="crm-meta text-[var(--text-tertiary)]">
-                      {formatInPST(update.createdAt)}
+                    </div>
+                  ) : null}
+                  <div className="mt-0.5 border-t border-[var(--border)]/55 pt-2.5">
+                    <p className="crm-meta w-full min-w-0 max-w-full break-words leading-relaxed [overflow-wrap:anywhere]">
+                      {update.author}
                     </p>
                   </div>
                 </div>
@@ -385,16 +427,16 @@ export function LeadUpdatesSection({
         </section>
       </div>
 
-      {fullscreenUrl ? (
+      {lightboxUrl ? (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Image preview"
-          className="fixed inset-0 z-50 flex touch-manipulation items-center justify-center bg-black/90"
-          onClick={() => setPreviewIndex(null)}
+          className="fixed inset-0 z-[110] flex touch-manipulation items-center justify-center bg-black/90"
+          onClick={() => setLightboxUrl(null)}
         >
           <img
-            src={fullscreenUrl}
+            src={lightboxUrl}
             alt=""
             className="max-h-[90dvh] max-w-[90dvw] object-contain"
             onClick={(e) => e.stopPropagation()}
@@ -403,7 +445,7 @@ export function LeadUpdatesSection({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setPreviewIndex(null);
+              setLightboxUrl(null);
             }}
             aria-label="Close preview"
             className="absolute right-3 top-3 flex min-h-11 min-w-11 items-center justify-center rounded-full bg-white/10 px-3 text-lg text-white"

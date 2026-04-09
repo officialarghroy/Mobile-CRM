@@ -19,8 +19,11 @@ type CreateLeadModalProps = {
 export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadModalProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const stepRef = useRef(0);
   const [step, setStep] = useState(0);
   const [isPending, startTransition] = useTransition();
+
+  stepRef.current = step;
 
   const close = useCallback(() => {
     onOpenChange(false);
@@ -44,9 +47,10 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, close]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
+  const runCreateLead = () => {
+    if (stepRef.current !== 2) return;
+    const form = formRef.current;
+    if (!form) return;
     const fd = new FormData(form);
 
     startTransition(async () => {
@@ -58,6 +62,16 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
         console.error("Create lead failed:", error);
       }
     });
+  };
+
+  /** Enter in a field fires submit; advance on Basic or Contact, create only on Equipment. */
+  const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (stepRef.current < 2) {
+      setStep((s) => Math.min(s + 1, 2));
+      return;
+    }
+    runCreateLead();
   };
 
   return (
@@ -80,7 +94,7 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
             </button>
           </div>
 
-          <form ref={formRef} className="flex flex-col" onSubmit={handleSubmit}>
+          <form ref={formRef} className="flex flex-col" onSubmit={handleFormSubmit}>
             <div
               role="tablist"
               aria-label="Add lead steps"
@@ -214,7 +228,8 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
                   variant="ghost"
                   className="w-full sm:w-auto"
                   disabled={isPending}
-                  onClick={() => setStep((prev) => prev - 1)}
+                  formNoValidate
+                  onClick={() => setStep((prev) => Math.max(prev - 1, 0))}
                 >
                   Back
                 </Button>
@@ -226,12 +241,26 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
                   type="button"
                   className="w-full sm:ml-auto sm:w-auto sm:min-w-[8rem]"
                   disabled={isPending}
-                  onClick={() => setStep((prev) => prev + 1)}
+                  formNoValidate
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    setStep((prev) => Math.min(prev + 1, 2));
+                  }}
                 >
                   Continue
                 </Button>
               ) : (
-                <Button type="submit" className="w-full sm:ml-auto sm:w-auto sm:min-w-[8rem]" disabled={isPending}>
+                <Button
+                  type="button"
+                  className="w-full sm:ml-auto sm:w-auto sm:min-w-[8rem]"
+                  disabled={isPending}
+                  onClick={(ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    runCreateLead();
+                  }}
+                >
                   {isPending ? "Creating…" : "Create lead"}
                 </Button>
               )}
