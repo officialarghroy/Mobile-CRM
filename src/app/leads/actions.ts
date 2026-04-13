@@ -9,6 +9,86 @@ type SupabaseError = {
   message?: string;
 };
 
+const LEAD_STATUSES = new Set(["pending", "urgent", "paid", "not_paid"]);
+
+export type LeadPersistResult = { success: true } | { success: false };
+
+export async function markLeadAsRead(leadId: string): Promise<LeadPersistResult> {
+  const id = String(leadId ?? "").trim();
+  if (!id) return { success: false };
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ is_read: true })
+      .eq("id", id)
+      .is("deleted_at", null);
+
+    if (error) {
+      console.error("markLeadAsRead:", error.message);
+      return { success: false };
+    }
+
+    revalidatePath("/leads");
+    return { success: true };
+  } catch (e) {
+    console.error("markLeadAsRead:", e);
+    return { success: false };
+  }
+}
+
+export async function updateLeadStatus(leadId: string, status: string): Promise<LeadPersistResult> {
+  const id = String(leadId ?? "").trim();
+  const s = String(status ?? "").trim().toLowerCase();
+  if (!id || !LEAD_STATUSES.has(s)) return { success: false };
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ status: s })
+      .eq("id", id)
+      .is("deleted_at", null);
+
+    if (error) {
+      console.error("updateLeadStatus:", error.message);
+      return { success: false };
+    }
+
+    revalidatePath("/leads");
+    return { success: true };
+  } catch (e) {
+    console.error("updateLeadStatus:", e);
+    return { success: false };
+  }
+}
+
+export async function updateLeadPriority(leadId: string, priority: number): Promise<LeadPersistResult> {
+  const id = String(leadId ?? "").trim();
+  if (!id || !Number.isFinite(priority)) return { success: false };
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ priority_order: priority })
+      .eq("id", id)
+      .is("deleted_at", null);
+
+    if (error) {
+      console.error("updateLeadPriority:", error.message);
+      return { success: false };
+    }
+
+    revalidatePath("/leads");
+    return { success: true };
+  } catch (e) {
+    console.error("updateLeadPriority:", e);
+    return { success: false };
+  }
+}
+
 export async function createLead(formData: FormData) {
   const supabase = await createSupabaseServerClient();
 

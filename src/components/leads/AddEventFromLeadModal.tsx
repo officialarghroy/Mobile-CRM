@@ -32,6 +32,11 @@ function initialAssignedUserId(viewerUserId: string | null, rows: TeamMemberRow[
   return viewerUserId ?? "";
 }
 
+function defaultEventTitleFromLeadName(name: string): string {
+  const n = name.trim() || "lead";
+  return `Follow up with ${n}`;
+}
+
 function buildAssigneeRows(
   teamMembers: TeamMemberRow[],
   viewerUserId: string | null,
@@ -81,7 +86,7 @@ export function AddEventFromLeadModal({
     () => buildAssigneeRows(teamMembers, viewerUserId, viewerEmail),
     [teamMembers, viewerUserId, viewerEmail],
   );
-  const [title, setTitle] = useState(leadName);
+  const [title, setTitle] = useState(() => defaultEventTitleFromLeadName(leadName));
   const [startTime, setStartTime] = useState(() =>
     toDatetimeLocalValue(startOfDayAtNine(new Date())),
   );
@@ -97,7 +102,7 @@ export function AddEventFromLeadModal({
   useEffect(() => {
     if (!open) return;
     setSaveError(null);
-    setTitle(leadName);
+    setTitle(defaultEventTitleFromLeadName(leadName));
     const now = new Date();
     const nine = startOfDayAtNine(now);
     setStartTime(toDatetimeLocalValue(nine));
@@ -118,6 +123,8 @@ export function AddEventFromLeadModal({
     if (isPending) return;
     onOpenChange(false);
   };
+
+  const leadNameForTitles = leadName.trim() || "lead";
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -164,8 +171,37 @@ export function AddEventFromLeadModal({
               <RiCloseLine className="h-5 w-5 shrink-0" aria-hidden />
             </button>
           </div>
+          <p className="mb-3 text-sm text-[var(--text-secondary)]">
+            Lead: {leadName.trim() || "—"}
+          </p>
           <form className="flex min-w-0 flex-col gap-3" onSubmit={handleSubmit}>
             <input type="hidden" name="lead_id" value={leadId} readOnly aria-hidden />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setTitle(`Call ${leadNameForTitles}`)}
+                className="touch-manipulation rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Call
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setTitle(`Visit ${leadNameForTitles}`)}
+                className="touch-manipulation rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Visit
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => setTitle(`Follow up with ${leadNameForTitles}`)}
+                className="touch-manipulation rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Follow-up
+              </button>
+            </div>
             <Input
               label="Title"
               value={title}

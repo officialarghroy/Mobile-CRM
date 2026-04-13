@@ -26,7 +26,7 @@ export function LeadDetailScheduleEvent({
   return (
     <>
       <Button type="button" className="w-full touch-manipulation" onClick={() => setOpen(true)}>
-        Assign a Task
+        Add Task / Schedule
       </Button>
       <AddEventFromLeadModal
         open={open}

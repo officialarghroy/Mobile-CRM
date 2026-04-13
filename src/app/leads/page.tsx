@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { AppMain } from "@/components/layout/AppMain";
 import { LeadsListSection } from "@/components/leads/LeadsListSection";
+import type { LeadCardData } from "@/components/leads/LeadsListSection";
 import { LeadsListSkeleton } from "@/components/leads/LeadsListSkeleton";
 import { Container } from "@/components/ui/Container";
 import { isMissingDeletedAtColumnError } from "@/lib/leadsSoftDeleteSupport";
 import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { fetchTeamMembers } from "@/lib/teamAccess";
 
 type Lead = {
   id: string;
@@ -13,6 +15,9 @@ type Lead = {
   address: string | null;
   created_at: string;
   type: string | null;
+  status?: string | null;
+  is_read?: boolean | null;
+  priority_order?: number | null;
 };
 
 type LeadUpdateRow = {
@@ -26,16 +31,20 @@ type LatestLeadActivity = {
   createdAt: string;
 };
 
-type LeadCardData = {
-  id: string;
-  name: string;
-  business: string;
-  address: string;
-  type: "lead" | "client";
-  update: string;
-  activityAt: string;
-  timestamp: string;
-};
+function normalizeLeadStatus(raw: unknown): NonNullable<LeadCardData["status"]> {
+  const s = String(raw ?? "pending").trim().toLowerCase();
+  if (s === "urgent" || s === "paid" || s === "not_paid" || s === "pending") return s;
+  return "pending";
+}
+
+function normalizeIsRead(raw: unknown): boolean {
+  return raw === true;
+}
+
+function normalizePriorityOrder(raw: unknown): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
 
 function formatTimestamp(createdAt: string): string {
   const date = new Date(createdAt);
@@ -65,6 +74,13 @@ function formatTimestamp(createdAt: string): string {
   });
 }
 
+function sortLeadsByPriorityAndCreated(a: LeadCardData, b: LeadCardData): number {
+  const pa = a.priority_order ?? 0;
+  const pb = b.priority_order ?? 0;
+  if (pb !== pa) return pb - pa;
+  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+}
+
 type SupabaseError = {
   code?: string;
   message?: string;
@@ -86,27 +102,71 @@ function logFetchLeadsError(error: unknown) {
 
 async function LeadsPageContent() {
   const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerUserId = user?.id ?? null;
+  const viewerEmail = user?.email ?? "";
+  const { rows: teamMemberRows } = await fetchTeamMembers(supabase);
 
   let leads: LeadCardData[] = [];
 
   try {
-    const leadsSelect = "id, name, business, address, created_at, type";
+    const leadsSelectFull =
+      "id, name, business, address, created_at, type, status, is_read, priority_order";
+    const leadsSelectBasic = "id, name, business, address, created_at, type";
 
-    let { data, error } = await supabase
+    let data: Lead[] | null = null;
+    let error = null as SupabaseError | null;
+
+    const first = await supabase
       .from("leads")
-      .select(leadsSelect)
+      .select(leadsSelectFull)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
+    data = first.data as Lead[] | null;
+    error = first.error as SupabaseError | null;
 
     if (error) {
-      const supabaseError = error as SupabaseError;
-      if (isMissingDeletedAtColumnError(supabaseError)) {
-        const retry = await supabase
+      const supabaseError = error;
+      const msg = String(supabaseError.message ?? "").toLowerCase();
+      const missingOptionalListCols =
+        supabaseError.code === "42703" ||
+        (msg.includes("does not exist") &&
+          (msg.includes("status") || msg.includes("is_read") || msg.includes("priority_order")));
+      if (missingOptionalListCols) {
+        const fallback = await supabase
           .from("leads")
-          .select(leadsSelect)
+          .select(leadsSelectBasic)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
-        data = retry.data;
-        error = retry.error;
+        data = fallback.data as Lead[] | null;
+        error = fallback.error as SupabaseError | null;
+      } else if (isMissingDeletedAtColumnError(supabaseError)) {
+        const retryFull = await supabase
+          .from("leads")
+          .select(leadsSelectFull)
+          .order("created_at", { ascending: false });
+        let resultData = retryFull.data as Lead[] | null;
+        let resultError = retryFull.error as SupabaseError | null;
+        if (retryFull.error) {
+          const rErr = retryFull.error as SupabaseError;
+          const rMsg = String(rErr.message ?? "").toLowerCase();
+          const missingOpt =
+            rErr.code === "42703" ||
+            (rMsg.includes("does not exist") &&
+              (rMsg.includes("status") || rMsg.includes("is_read") || rMsg.includes("priority_order")));
+          if (missingOpt) {
+            const retryBasic = await supabase
+              .from("leads")
+              .select(leadsSelectBasic)
+              .order("created_at", { ascending: false });
+            resultData = retryBasic.data as Lead[] | null;
+            resultError = retryBasic.error as SupabaseError | null;
+          }
+        }
+        data = resultData;
+        error = resultError;
       }
     }
 
@@ -160,14 +220,27 @@ async function LeadsPageContent() {
           update: latestActivity?.content ?? "No activity yet",
           activityAt,
           timestamp: formatTimestamp(activityAt),
+          created_at: lead.created_at,
+          status: normalizeLeadStatus(lead.status),
+          is_read: normalizeIsRead(lead.is_read),
+          priority_order: normalizePriorityOrder(lead.priority_order),
         };
       });
+
+      leads.sort(sortLeadsByPriorityAndCreated);
     }
   } catch (error) {
     logFetchLeadsError(error);
   }
 
-  return <LeadsListSection leads={leads} />;
+  return (
+    <LeadsListSection
+      leads={leads}
+      teamMembers={teamMemberRows}
+      viewerUserId={viewerUserId}
+      viewerEmail={viewerEmail}
+    />
+  );
 }
 
 export default function LeadsPage() {
