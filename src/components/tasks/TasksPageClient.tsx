@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarEventButton";
 import { TaskCompleteControl } from "@/components/tasks/TaskCompleteControl";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
@@ -38,6 +47,18 @@ const TABS: { id: TasksTabId; label: string; emptyMessage: string }[] = [
   { id: "past", label: "Past", emptyMessage: "No past tasks." },
 ];
 
+function findTaskTabForId(
+  taskId: string,
+  today: TaskEventRow[],
+  upcoming: TaskEventRow[],
+  past: TaskEventRow[],
+): TasksTabId | null {
+  if (today.some((t) => t.id === taskId)) return "today";
+  if (upcoming.some((t) => t.id === taskId)) return "upcoming";
+  if (past.some((t) => t.id === taskId)) return "past";
+  return null;
+}
+
 function assignerDisplayLabel(
   task: Pick<TaskEventRow, "created_by_user_id" | "user_name">,
   teamMembers: TeamMemberRow[],
@@ -72,10 +93,12 @@ function TaskList({
   tasks,
   teamMembers,
   viewerUserId,
+  highlightedTaskId,
 }: {
   tasks: TaskEventRow[];
   teamMembers: TeamMemberRow[];
   viewerUserId: string | null;
+  highlightedTaskId?: string | null;
 }) {
   if (!tasks.length) return null;
   const canToggle = Boolean(viewerUserId);
@@ -85,12 +108,14 @@ function TaskList({
         const assigner = assignerDisplayLabel(task, teamMembers, viewerUserId);
         const done = Boolean(task.completed_at?.trim());
         const titleLabel = task.title?.trim() ? task.title.trim() : "Untitled task";
+        const isHighlight = Boolean(highlightedTaskId && task.id === highlightedTaskId);
         return (
           <div
             key={task.id}
+            id={`task-row-${task.id}`}
             className={`border-b border-[var(--border)] border-l-[3px] border-l-[var(--accent-strong)] px-3 py-3 text-left last:border-b-0 ${
               done ? "bg-[var(--surface-muted)]/40" : ""
-            }`}
+            } ${isHighlight ? "rounded-lg ring-2 ring-[var(--accent-strong)] ring-offset-2 ring-offset-[var(--surface)]" : ""}`}
           >
             <div className="flex items-start gap-2 pl-0.5 pr-1">
               {canToggle ? (
@@ -268,6 +293,8 @@ type TasksPageClientProps = {
   assignedUpcomingTasks?: TaskEventRow[];
   assignedPastTasks?: TaskEventRow[];
   teamMembers?: TeamMemberRow[];
+  /** When set (e.g. from `?highlight=` query), switch to the matching tab and scroll to the task row. */
+  highlightEventId?: string | null;
 };
 
 export function TasksPageClient({
@@ -279,15 +306,20 @@ export function TasksPageClient({
   assignedUpcomingTasks = [],
   assignedPastTasks = [],
   teamMembers = [],
+  highlightEventId = null,
 }: TasksPageClientProps) {
+  const router = useRouter();
   const [active, setActive] = useState<TasksTabId>("today");
   const [assignedActive, setAssignedActive] = useState<TasksTabId>("today");
 
-  const tasksByTab: Record<TasksTabId, TaskEventRow[]> = {
-    today: todayTasks,
-    upcoming: upcomingTasks,
-    past: pastTasks,
-  };
+  const tasksByTab: Record<TasksTabId, TaskEventRow[]> = useMemo(
+    () => ({
+      today: todayTasks,
+      upcoming: upcomingTasks,
+      past: pastTasks,
+    }),
+    [todayTasks, upcomingTasks, pastTasks],
+  );
 
   const activeTabMeta = TABS.find((t) => t.id === active)!;
   const activeTasks = tasksByTab[active];
@@ -358,6 +390,52 @@ export function TasksPageClient({
     [assignedActive, focusAssignedTab],
   );
 
+  const highlightIdTrimmed = highlightEventId?.trim() ?? "";
+
+  useLayoutEffect(() => {
+    if (!highlightIdTrimmed) return;
+    const tab = findTaskTabForId(
+      highlightIdTrimmed,
+      todayTasks,
+      upcomingTasks,
+      pastTasks,
+    );
+    if (tab) {
+      startTransition(() => {
+        setActive(tab);
+      });
+    }
+  }, [highlightIdTrimmed, todayTasks, upcomingTasks, pastTasks]);
+
+  useEffect(() => {
+    if (!highlightIdTrimmed) return;
+    const tab = findTaskTabForId(
+      highlightIdTrimmed,
+      todayTasks,
+      upcomingTasks,
+      pastTasks,
+    );
+    if (!tab) {
+      router.replace("/tasks", { scroll: false });
+      return;
+    }
+    if (active !== tab) return;
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById(`task-row-${highlightIdTrimmed}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      router.replace("/tasks", { scroll: false });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [
+    active,
+    highlightIdTrimmed,
+    todayTasks,
+    upcomingTasks,
+    pastTasks,
+    router,
+  ]);
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-5">
@@ -401,7 +479,12 @@ export function TasksPageClient({
               {activeTabMeta.emptyMessage}
             </div>
           ) : (
-            <TaskList tasks={activeTasks} teamMembers={teamMembers} viewerUserId={viewerUserId} />
+            <TaskList
+              tasks={activeTasks}
+              teamMembers={teamMembers}
+              viewerUserId={viewerUserId}
+              highlightedTaskId={highlightIdTrimmed || null}
+            />
           )}
         </div>
       </div>

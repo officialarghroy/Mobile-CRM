@@ -7,7 +7,7 @@
  * - Client reloads on new worker (RegisterServiceWorker) so installs pick up new sw.js/fast.
  * - Keep theme colors in sync: public/manifest.json, public/offline.html, src/app/layout.tsx (viewport.themeColor).
  */
-const CACHE_NAME = "crm-pwa-shell-v7";
+const CACHE_NAME = "crm-pwa-shell-v8";
 const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/Logo.webp"];
 
 self.addEventListener("install", (event) => {

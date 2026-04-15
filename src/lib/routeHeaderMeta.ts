@@ -38,6 +38,9 @@ export function getRouteHeaderMeta(pathname: string): RouteHeaderMeta {
       subtitle: "Your tasks first, then tasks you assigned to others",
     };
   }
+  if (p === "/notifications") {
+    return { title: "Notifications", subtitle: "Your updates and assignments" };
+  }
   if (p === "/users") {
     return { title: "Users", subtitle: "Team members and roles" };
   }

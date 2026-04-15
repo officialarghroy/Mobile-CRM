@@ -59,6 +59,13 @@
       "description": "Open your tasks",
       "url": "/tasks",
       "icons": [{ "src": "/Logo.webp", "sizes": "192x192", "type": "image/webp" }]
+    },
+    {
+      "name": "Notifications",
+      "short_name": "Alerts",
+      "description": "Open your notifications",
+      "url": "/notifications",
+      "icons": [{ "src": "/Logo.webp", "sizes": "192x192", "type": "image/webp" }]
     }
   ]
 }

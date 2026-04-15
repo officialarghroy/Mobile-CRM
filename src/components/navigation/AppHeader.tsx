@@ -1,14 +1,96 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { RiNotification3Line } from "react-icons/ri";
 import { AppHeaderActions } from "@/components/navigation/AppHeaderActions";
 import { HamburgerMenu } from "@/components/navigation/HamburgerMenu";
 import type { MenuUserProfile } from "@/lib/menuUserProfile";
 import { getRouteHeaderMeta } from "@/lib/routeHeaderMeta";
+import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type AppHeaderProps = {
   initialProfile: MenuUserProfile;
 };
+
+function HeaderNotificationBell({ initialProfile }: { initialProfile: MenuUserProfile }) {
+  const router = useRouter();
+  const pathname = usePathname() ?? "";
+  const [fetchedUnread, setFetchedUnread] = useState<number | null>(null);
+  const [popScale, setPopScale] = useState(1);
+  const hasPlayedPop = useRef(false);
+
+  const unreadCount =
+    fetchedUnread ?? initialProfile.unreadNotificationCount;
+
+  useEffect(() => {
+    if (!initialProfile.hasSupabaseAuth) return;
+    let cancelled = false;
+    const refreshUnread = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { count, error } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_read", false);
+        if (!cancelled && !error && typeof count === "number") {
+          setFetchedUnread(count);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    void refreshUnread();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, initialProfile.hasSupabaseAuth]);
+
+  useLayoutEffect(() => {
+    if (unreadCount <= 0 || hasPlayedPop.current) return;
+    hasPlayedPop.current = true;
+    startTransition(() => {
+      setPopScale(1.12);
+    });
+    const t = window.setTimeout(() => {
+      startTransition(() => {
+        setPopScale(1);
+      });
+    }, 320);
+    return () => window.clearTimeout(t);
+  }, [unreadCount]);
+
+  return (
+    <button
+      type="button"
+      aria-label={
+        unreadCount > 0
+          ? `Notifications, ${unreadCount} unread`
+          : "Notifications"
+      }
+      onClick={() => router.push("/notifications")}
+      className="relative flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] shadow-[var(--shadow-card)] transition-[transform,box-shadow,background-color] duration-200 ease-out hover:bg-[var(--surface-muted)] hover:shadow-[var(--shadow-elevated)] active:bg-[var(--surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface)] motion-reduce:transition-none"
+      style={{
+        transform: `scale(${popScale})`,
+      }}
+    >
+      <RiNotification3Line className="h-5 w-5 shrink-0" aria-hidden />
+      {unreadCount > 0 ? (
+        <span
+          className="absolute -right-1 -top-1 flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
+          aria-hidden
+        >
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
 export function AppHeader({ initialProfile }: AppHeaderProps) {
   const pathname = usePathname() ?? "";
@@ -28,7 +110,10 @@ export function AppHeader({ initialProfile }: AppHeaderProps) {
             </p>
           ) : null}
         </div>
-        <AppHeaderActions />
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <HeaderNotificationBell initialProfile={initialProfile} />
+          <AppHeaderActions />
+        </div>
       </div>
     </header>
   );

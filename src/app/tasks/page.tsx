@@ -55,7 +55,25 @@ function groupTasksByPstDay(rows: TaskEventRow[], todayPstKey: string) {
   return { todayTasks, upcomingTasks, pastTasks };
 }
 
-export default async function TasksPage() {
+type TasksSearchParams = { highlight?: string | string[] };
+
+function highlightIdFromSearchParams(sp: TasksSearchParams): string | null {
+  const raw = sp.highlight;
+  if (typeof raw === "string" && raw.trim()) return raw.trim();
+  if (Array.isArray(raw) && typeof raw[0] === "string" && raw[0].trim()) {
+    return raw[0].trim();
+  }
+  return null;
+}
+
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: TasksSearchParams | Promise<TasksSearchParams>;
+}) {
+  const sp = await Promise.resolve(searchParams);
+  const highlightEventId = highlightIdFromSearchParams(sp);
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -164,6 +182,7 @@ export default async function TasksPage() {
           assignedUpcomingTasks={assignedUpcomingTasks}
           assignedPastTasks={assignedPastTasks}
           teamMembers={teamMemberRows}
+          highlightEventId={highlightEventId}
         />
       </Container>
     </AppMain>

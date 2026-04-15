@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
@@ -435,12 +436,28 @@ export function LeadUpdatesSection({
           className="fixed inset-0 z-[110] flex touch-manipulation items-center justify-center bg-black/90"
           onClick={() => setLightboxUrl(null)}
         >
-          <img
-            src={lightboxUrl}
-            alt=""
-            className="max-h-[90dvh] max-w-[90dvw] object-contain"
+          <div
+            className="flex max-h-[90dvh] max-w-[90dvw] items-center justify-center"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <TransformWrapper
+              key={lightboxUrl}
+              initialScale={1}
+              minScale={1}
+              maxScale={4}
+              doubleClick={{ disabled: false }}
+              pinch={{ step: 5 }}
+            >
+              <TransformComponent>
+                <img
+                  src={lightboxUrl}
+                  alt=""
+                  className="max-h-[90dvh] max-w-[90dvw] object-contain select-none"
+                  draggable={false}
+                />
+              </TransformComponent>
+            </TransformWrapper>
+          </div>
           <button
             type="button"
             onClick={(e) => {

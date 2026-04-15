@@ -10,6 +10,7 @@ import {
   RiDeleteBinLine,
   RiListCheck2,
   RiLogoutBoxRLine,
+  RiNotification3Line,
   RiTeamLine,
   RiUserLine,
 } from "react-icons/ri";
@@ -66,9 +67,42 @@ type HamburgerMenuProps = {
 export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  /** Client-refreshed count; when null, fall back to server value from layout. */
+  const [fetchedUnreadCount, setFetchedUnreadCount] = useState<number | null>(null);
   const isClient = useIsClient();
 
   useBodyScrollLock(isOpen && isClient);
+
+  const liveUnreadCount =
+    fetchedUnreadCount ?? initialProfile.unreadNotificationCount;
+
+  useEffect(() => {
+    if (!initialProfile.hasSupabaseAuth) return;
+    let cancelled = false;
+    const refreshUnread = async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { count, error } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_read", false);
+        if (!cancelled && !error && typeof count === "number") {
+          setFetchedUnreadCount(count);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    void refreshUnread();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, isOpen, initialProfile.hasSupabaseAuth]);
 
   useEffect(() => {
     queueMicrotask(() => setIsOpen(false));
@@ -152,6 +186,24 @@ export function HamburgerMenu({ initialProfile }: HamburgerMenuProps) {
                   >
                     <RiCalendarEventLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
                     Calendar
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    onClick={() => setIsOpen(false)}
+                    className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                  >
+                    <span className="relative shrink-0">
+                      <RiNotification3Line className="h-8 w-8 text-[var(--accent-strong)]" aria-hidden />
+                      {liveUnreadCount > 0 ? (
+                        <span
+                          className="absolute -right-1 -top-1 flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[var(--accent-strong)] px-1 text-[0.625rem] font-bold leading-none text-white shadow-sm"
+                          aria-label={`${liveUnreadCount} unread notifications`}
+                        >
+                          {liveUnreadCount > 99 ? "99+" : liveUnreadCount}
+                        </span>
+                      ) : null}
+                    </span>
+                    Notifications
                   </Link>
                   {initialProfile.hasSupabaseAuth ? (
                     <Link

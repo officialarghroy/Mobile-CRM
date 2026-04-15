@@ -6,6 +6,8 @@ export type MenuUserProfile = {
   email: string | null;
   avatarUrl: string | null;
   hasSupabaseAuth: boolean;
+  /** Unread in-app notifications (best-effort; may be 0 if table or columns are missing). */
+  unreadNotificationCount: number;
 };
 
 export async function getMenuUserProfile(): Promise<MenuUserProfile> {
@@ -39,11 +41,32 @@ export async function getMenuUserProfile(): Promise<MenuUserProfile> {
         avatarUrl = raw || null;
       }
 
+      let unreadNotificationCount = 0;
+      try {
+        const { count, error: unreadError } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("is_read", false);
+        const code =
+          unreadError && typeof unreadError === "object" && "code" in unreadError
+            ? String((unreadError as { code?: string }).code ?? "")
+            : "";
+        if (!unreadError && typeof count === "number") {
+          unreadNotificationCount = count;
+        } else if (code && code !== "PGRST205") {
+          console.error("Unread notifications count failed:", unreadError);
+        }
+      } catch {
+        /* ignore */
+      }
+
       return {
         displayName,
         email,
         avatarUrl,
         hasSupabaseAuth: true,
+        unreadNotificationCount,
       };
     }
   } catch {
@@ -55,5 +78,6 @@ export async function getMenuUserProfile(): Promise<MenuUserProfile> {
     email: null,
     avatarUrl: null,
     hasSupabaseAuth: false,
+    unreadNotificationCount: 0,
   };
 }
