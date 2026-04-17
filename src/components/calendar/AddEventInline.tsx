@@ -127,8 +127,11 @@ export function AddEventInline({
         const row = await createEvent(formData);
         onCreated?.(row);
         setTitle("");
-        router.refresh();
         onClose();
+        // Defer so parent `router.replace` for filter URL can run before RSC refresh (avoids stale `?u=` / flicker).
+        setTimeout(() => {
+          router.refresh();
+        }, 0);
       } catch (err) {
         console.error("Failed to create event:", err);
         setSaveError(getUserFacingErrorMessage(err, "Could not save the event."));

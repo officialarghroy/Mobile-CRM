@@ -264,16 +264,16 @@ export function CalendarPageClient({
     [teamMembers, viewerUserId],
   );
 
+  /** Use `router.replace` so `useSearchParams` matches the bar; raw `history.replaceState` was fighting the sync effect after `router.refresh()`. */
   const replaceQueryParams = useCallback(
     (mutate: (p: URLSearchParams) => void) => {
-      if (typeof window === "undefined") return;
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(searchParams.toString());
       mutate(params);
       const q = params.toString();
-      const path = pathname || window.location.pathname;
-      window.history.replaceState(window.history.state, "", q ? `${path}?${q}` : path);
+      const path = pathname || "/calendar";
+      router.replace(q ? `${path}?${q}` : path, { scroll: false });
     },
-    [pathname],
+    [pathname, router, searchParams],
   );
 
   const setCalendarView = useCallback(
@@ -304,21 +304,45 @@ export function CalendarPageClient({
     [replaceQueryParams],
   );
 
+  /** One navigation for filter + Events vs Calendar so two replaces cannot drop `?u=` or `view`. */
+  const setListShowViewAndUrl = useCallback(
+    (next: ListShowFilter, nextView: "list" | "calendar") => {
+      setListShow(next);
+      setView(nextView);
+      replaceQueryParams((params) => {
+        params.delete("cal");
+        params.delete("u");
+        if (next.type === "member") {
+          params.set("u", next.userId);
+        }
+        if (nextView === "calendar") {
+          params.set("view", "calendar");
+        } else {
+          params.delete("view");
+        }
+      });
+    },
+    [replaceQueryParams],
+  );
+
   const clearCalendarFocus = useCallback(() => setCalendarFocusStart(null), []);
 
   const handleEventCreated = useCallback(
     (row: CalendarEventRow) => {
       setStagedEvents((prev) => (prev.some((e) => e.id === row.id) ? prev : [...prev, row]));
 
-      if (viewerUserId) {
-        if (row.calendar_scope === "personal") {
-          setListShowAndUrl({ type: "member", userId: viewerUserId });
-        } else if (
-          row.calendar_scope === "team" &&
-          listShow.type === "member" &&
-          listShow.userId === viewerUserId
-        ) {
-          setListShowAndUrl({ type: "team" });
+      const ownerId = row.owner_user_id?.trim() || null;
+
+      if (row.calendar_scope === "personal" && viewerUserId) {
+        setListShowViewAndUrl({ type: "member", userId: viewerUserId }, "list");
+      } else if (row.calendar_scope === "team" && ownerId) {
+        // Your name pill shows personal events only; Team shows shared team events including self-assigned.
+        if (viewerUserId && ownerId === viewerUserId) {
+          setListShowViewAndUrl({ type: "team" }, "list");
+        } else if (memberIdSet.has(ownerId)) {
+          setListShowViewAndUrl({ type: "member", userId: ownerId }, "list");
+        } else {
+          setListShowViewAndUrl({ type: "team" }, "list");
         }
       }
 
@@ -330,7 +354,7 @@ export function CalendarPageClient({
         }));
       }
     },
-    [listShow, setListShowAndUrl, viewerUserId],
+    [memberIdSet, setListShowViewAndUrl, viewerUserId],
   );
 
   const activeSegment =
