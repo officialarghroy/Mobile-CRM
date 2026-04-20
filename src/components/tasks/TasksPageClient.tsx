@@ -14,6 +14,11 @@ import {
 import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarEventButton";
 import { TaskCompleteControl } from "@/components/tasks/TaskCompleteControl";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+import {
+  buildCreatorLookupFromTeamMembers,
+  formatEventAddedByLabel,
+  formatEventAssigneeLabel,
+} from "@/lib/calendarCreatorLabel";
 import type { CalendarScope } from "@/lib/calendarEventDisplay";
 import type { TeamMemberRow } from "@/lib/teamAccess";
 import { formatInPST } from "@/lib/timezone";
@@ -59,45 +64,17 @@ function findTaskTabForId(
   return null;
 }
 
-function assignerDisplayLabel(
-  task: Pick<TaskEventRow, "created_by_user_id" | "user_name">,
-  teamMembers: TeamMemberRow[],
-  viewerUserId: string | null,
-): string | null {
-  const cid = task.created_by_user_id?.trim();
-  if (viewerUserId && cid === viewerUserId) {
-    return "You";
-  }
-  if (cid) {
-    const member = teamMembers.find((m) => m.user_id === cid);
-    if (member) {
-      const name = member.display_name?.trim();
-      if (name && name !== "—") {
-        return name;
-      }
-      const email = member.email?.trim();
-      if (email) {
-        return email;
-      }
-    }
-  }
-  const stored = task.user_name?.trim();
-  if (stored) {
-    const local = stored.split("@")[0]?.trim();
-    return local || stored;
-  }
-  return null;
-}
-
 function TaskList({
   tasks,
-  teamMembers,
   viewerUserId,
+  viewerEmail,
+  creatorLookup,
   highlightedTaskId,
 }: {
   tasks: TaskEventRow[];
-  teamMembers: TeamMemberRow[];
   viewerUserId: string | null;
+  viewerEmail: string;
+  creatorLookup: ReturnType<typeof buildCreatorLookupFromTeamMembers>;
   highlightedTaskId?: string | null;
 }) {
   if (!tasks.length) return null;
@@ -105,7 +82,20 @@ function TaskList({
   return (
     <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
       {tasks.map((task) => {
-        const assigner = assignerDisplayLabel(task, teamMembers, viewerUserId);
+        const addedBy = formatEventAddedByLabel(
+          {
+            user_name: task.user_name ?? null,
+            created_by_user_id: task.created_by_user_id ?? null,
+          },
+          viewerEmail,
+          viewerUserId,
+          creatorLookup,
+        );
+        const assignedTo = formatEventAssigneeLabel(
+          { owner_user_id: task.owner_user_id ?? null },
+          viewerUserId,
+          creatorLookup,
+        );
         const done = Boolean(task.completed_at?.trim());
         const titleLabel = task.title?.trim() ? task.title.trim() : "Untitled task";
         const isHighlight = Boolean(highlightedTaskId && task.id === highlightedTaskId);
@@ -153,11 +143,12 @@ function TaskList({
                     Completed {formatInPST(task.completed_at)}
                   </p>
                 ) : null}
-                {assigner ? (
-                  <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
-                    Assigned by {assigner}
-                  </p>
-                ) : null}
+                <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                  Added by {addedBy}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                  Assigned to {assignedTo}
+                </p>
                 {task.lead_id ? (
                   <Link
                     href={`/leads/${task.lead_id}`}
@@ -177,46 +168,36 @@ function TaskList({
   );
 }
 
-function assigneeDisplayName(
-  ownerUserId: string | null | undefined,
-  teamMembers: TeamMemberRow[],
-): string {
-  if (!teamMembers.length) {
-    return "Assigned user";
-  }
-  const uid = ownerUserId?.trim();
-  if (!uid) {
-    return "Assigned user";
-  }
-  const member = teamMembers.find((m) => m.user_id === uid);
-  if (!member) {
-    return "Assigned user";
-  }
-  const name = member.display_name?.trim();
-  if (name && name !== "—") {
-    return name;
-  }
-  const email = member.email?.trim();
-  if (email) {
-    return email;
-  }
-  return "Assigned user";
-}
-
 function AssignedTaskList({
   tasks,
-  teamMembers,
   viewerUserId,
+  viewerEmail,
+  creatorLookup,
 }: {
   tasks: TaskEventRow[];
-  teamMembers: TeamMemberRow[];
   viewerUserId: string | null;
+  viewerEmail: string;
+  creatorLookup: ReturnType<typeof buildCreatorLookupFromTeamMembers>;
 }) {
   if (!tasks.length) return null;
   const canToggle = Boolean(viewerUserId);
   return (
     <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
       {tasks.map((task) => {
+        const addedBy = formatEventAddedByLabel(
+          {
+            user_name: task.user_name ?? null,
+            created_by_user_id: task.created_by_user_id ?? null,
+          },
+          viewerEmail,
+          viewerUserId,
+          creatorLookup,
+        );
+        const assignedTo = formatEventAssigneeLabel(
+          { owner_user_id: task.owner_user_id ?? null },
+          viewerUserId,
+          creatorLookup,
+        );
         const done = Boolean(task.completed_at?.trim());
         const titleLabel = task.title?.trim() ? task.title.trim() : "Untitled task";
         return (
@@ -263,7 +244,10 @@ function AssignedTaskList({
                   </p>
                 ) : null}
                 <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
-                  Assigned: {assigneeDisplayName(task.owner_user_id, teamMembers)}
+                  Added by {addedBy}
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                  Assigned to {assignedTo}
                 </p>
                 {task.lead_id ? (
                   <Link
@@ -286,6 +270,7 @@ function AssignedTaskList({
 
 type TasksPageClientProps = {
   viewerUserId: string | null;
+  viewerEmail: string;
   todayTasks: TaskEventRow[];
   upcomingTasks: TaskEventRow[];
   pastTasks: TaskEventRow[];
@@ -299,6 +284,7 @@ type TasksPageClientProps = {
 
 export function TasksPageClient({
   viewerUserId,
+  viewerEmail,
   todayTasks,
   upcomingTasks,
   pastTasks,
@@ -311,6 +297,8 @@ export function TasksPageClient({
   const router = useRouter();
   const [active, setActive] = useState<TasksTabId>("today");
   const [assignedActive, setAssignedActive] = useState<TasksTabId>("today");
+
+  const creatorLookup = useMemo(() => buildCreatorLookupFromTeamMembers(teamMembers), [teamMembers]);
 
   const tasksByTab: Record<TasksTabId, TaskEventRow[]> = useMemo(
     () => ({
@@ -481,8 +469,9 @@ export function TasksPageClient({
           ) : (
             <TaskList
               tasks={activeTasks}
-              teamMembers={teamMembers}
               viewerUserId={viewerUserId}
+              viewerEmail={viewerEmail}
+              creatorLookup={creatorLookup}
               highlightedTaskId={highlightIdTrimmed || null}
             />
           )}
@@ -490,10 +479,15 @@ export function TasksPageClient({
       </div>
 
       <div className="flex flex-col gap-5">
-        <h2 className="crm-section-label">Tasks you assigned</h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="crm-section-label">Tasks you assigned</h2>
+          <p className="text-xs text-[var(--text-tertiary)]">
+            Team tasks you created for teammates or for yourself. Personal tasks stay in your main list above.
+          </p>
+        </div>
         {assignedTotalCount === 0 ? (
           <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-6 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)]">
-            No tasks assigned to others yet
+            Nothing here yet. Create a task on the calendar or from a lead (team or personal).
           </div>
         ) : (
           <>
@@ -539,8 +533,9 @@ export function TasksPageClient({
               ) : (
                 <AssignedTaskList
                   tasks={assignedActiveTasks}
-                  teamMembers={teamMembers}
                   viewerUserId={viewerUserId}
+                  viewerEmail={viewerEmail}
+                  creatorLookup={creatorLookup}
                 />
               )}
             </div>

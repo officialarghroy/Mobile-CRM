@@ -16,6 +16,8 @@ export type CalendarEventRow = {
   user_name: string | null;
   calendar_scope: CalendarScope;
   owner_user_id: string | null;
+  /** Auth user id of the teammate who created the event (when column exists). */
+  created_by_user_id: string | null;
   completed_at: string | null;
 };
 
@@ -28,9 +30,14 @@ export function normalizeCalendarEventRow(row: {
   user_name: string | null;
   calendar_scope?: CalendarScope | null;
   owner_user_id?: string | null;
+  created_by_user_id?: string | null;
   completed_at?: string | null;
 }): CalendarEventRow {
   const scope: CalendarScope = row.calendar_scope === "personal" ? "personal" : "team";
+  const createdBy =
+    typeof row.created_by_user_id === "string" && row.created_by_user_id.trim()
+      ? row.created_by_user_id.trim()
+      : null;
   return {
     id: row.id,
     title: row.title,
@@ -39,6 +46,7 @@ export function normalizeCalendarEventRow(row: {
     user_name: row.user_name,
     calendar_scope: scope,
     owner_user_id: row.owner_user_id ?? null,
+    created_by_user_id: createdBy,
     completed_at: row.completed_at?.trim() ? row.completed_at : null,
   };
 }

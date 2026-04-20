@@ -31,7 +31,9 @@ async function CalendarPageContent() {
   try {
     const extended = await supabase
       .from("events")
-      .select("id, title, start_time, end_time, user_name, calendar_scope, owner_user_id, completed_at")
+      .select(
+        "id, title, start_time, end_time, user_name, calendar_scope, owner_user_id, created_by_user_id, completed_at",
+      )
       .order("start_time", { ascending: true, nullsFirst: false });
 
     let rows: Parameters<typeof normalizeCalendarEventRow>[0][] = [];
@@ -46,7 +48,22 @@ async function CalendarPageContent() {
       }
       rows = (legacy.data ?? []) as Parameters<typeof normalizeCalendarEventRow>[0][];
     } else if (extended.error) {
-      throw extended.error;
+      const err = extended.error as { code?: string; message?: string };
+      const msg = String(err.message ?? "").toLowerCase();
+      const missingCreatedBy =
+        err.code === "42703" && (msg.includes("created_by_user_id") || msg.includes("created_by"));
+      if (missingCreatedBy) {
+        const retry = await supabase
+          .from("events")
+          .select("id, title, start_time, end_time, user_name, calendar_scope, owner_user_id, completed_at")
+          .order("start_time", { ascending: true, nullsFirst: false });
+        if (retry.error) {
+          throw retry.error;
+        }
+        rows = (retry.data ?? []) as Parameters<typeof normalizeCalendarEventRow>[0][];
+      } else {
+        throw extended.error;
+      }
     } else {
       rows = (extended.data ?? []) as Parameters<typeof normalizeCalendarEventRow>[0][];
     }

@@ -8,6 +8,9 @@ import {
 export const TIMELINE_HOUR_HEIGHT_PX = 48;
 export const TIMELINE_HOURS = 24;
 
+/** Minimum height only for very short durations so blocks stay tappable (does not inflate longer events). */
+const MIN_EVENT_BLOCK_HEIGHT_PX = 44;
+
 export function parseEventStart(iso: string | null): Date | null {
   if (!iso?.trim()) return null;
   const d = new Date(iso);
@@ -61,9 +64,10 @@ export function placeEventsForPstDay(pstDateKey: string, events: CalendarGridEve
     const durMin = endMin - startMin;
 
     let topPx = startMin * minutePx;
-    let heightPx = durMin * minutePx;
+    const rawHeightPx = durMin * minutePx;
     topPx = Math.max(0, Math.min(topPx, totalMinutes * minutePx));
-    heightPx = Math.max(44, Math.min(heightPx, totalMinutes * minutePx - topPx));
+    const maxHeightPx = totalMinutes * minutePx - topPx;
+    const heightPx = Math.min(Math.max(MIN_EVENT_BLOCK_HEIGHT_PX, rawHeightPx), maxHeightPx);
 
     placed.push({
       event,

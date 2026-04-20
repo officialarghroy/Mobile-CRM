@@ -66,6 +66,15 @@ function highlightIdFromSearchParams(sp: TasksSearchParams): string | null {
   return null;
 }
 
+/** Personal tasks you own stay in the main list only (you are always creator and owner). */
+function includeInTasksYouAssigned(row: TaskEventRow, viewerUserId: string): boolean {
+  const scope = row.calendar_scope === "personal" ? "personal" : "team";
+  if (scope === "personal" && row.owner_user_id === viewerUserId) {
+    return false;
+  }
+  return true;
+}
+
 export default async function TasksPage({
   searchParams,
 }: {
@@ -117,18 +126,21 @@ export default async function TasksPage({
     const assignedSelect =
       "id, title, start_time, end_time, lead_id, owner_user_id, user_name, created_by_user_id, completed_at, calendar_scope";
 
+    /** All events you created (assignee can be you or anyone). Excludes `neq(owner)` so self-assign shows here too. */
     const assignedBase = () =>
       supabase
         .from("events")
         .select(assignedSelect)
-        .neq("owner_user_id", currentUserId)
         .order("start_time", { ascending: true, nullsFirst: false });
 
     const [{ data: byCreatorId, error: assignedErrId }, { data: byLegacyEmail, error: assignedErrLegacy }] =
       await Promise.all([
         assignedBase().eq("created_by_user_id", currentUserId),
         currentUserEmail.trim()
-          ? assignedBase().is("created_by_user_id", null).ilike("user_name", currentUserEmail.trim())
+          ? assignedBase()
+              .is("created_by_user_id", null)
+              .neq("owner_user_id", currentUserId)
+              .ilike("user_name", currentUserEmail.trim())
           : Promise.resolve({ data: null, error: null }),
       ]);
 
@@ -154,7 +166,9 @@ export default async function TasksPage({
     for (const row of [...(byCreatorId ?? []), ...(byLegacyEmail ?? [])]) {
       merged.set(row.id, row as TaskEventRow);
     }
-    assignedTaskRows = [...merged.values()];
+    assignedTaskRows = [...merged.values()].filter((row) =>
+      includeInTasksYouAssigned(row, currentUserId),
+    );
   } catch (err) {
     console.error("Failed to fetch assigned tasks:", err);
   }
@@ -175,6 +189,7 @@ export default async function TasksPage({
       <Container className="flex min-h-0 flex-1 flex-col pb-[var(--app-page-scroll-pad)]">
         <TasksPageClient
           viewerUserId={currentUserId}
+          viewerEmail={currentUserEmail}
           todayTasks={todayTasks}
           upcomingTasks={upcomingTasks}
           pastTasks={pastTasks}

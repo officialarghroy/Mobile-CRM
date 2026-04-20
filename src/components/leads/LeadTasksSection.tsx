@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarEventButton";
 import { TaskCompleteControl } from "@/components/tasks/TaskCompleteControl";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
+import { buildCreatorLookupFromTeamMembers, formatEventAddedByLabel, formatEventAssigneeLabel } from "@/lib/calendarCreatorLabel";
 import type { CalendarScope } from "@/lib/calendarEventDisplay";
 import type { TeamMemberRow } from "@/lib/teamAccess";
 import { formatInPST, pstDateKeyFromInstant } from "@/lib/timezone";
@@ -101,27 +102,6 @@ function sortLeadTasksForDisplay(events: LeadTasksSectionEvent[]): LeadTasksSect
   return [...upcoming, ...today, ...past];
 }
 
-function formatAssigneeLabel(
-  ownerUserId: string | null | undefined,
-  viewerUserId: string | null,
-  teamMembers: TeamMemberRow[],
-): string {
-  if (!ownerUserId?.trim()) {
-    return "Unassigned";
-  }
-  if (viewerUserId && ownerUserId === viewerUserId) {
-    return "You";
-  }
-  const member = teamMembers.find((m) => m.user_id === ownerUserId);
-  if (member) {
-    const name = member.display_name.trim();
-    if (name && name !== "—") return name;
-    const email = member.email.trim();
-    if (email) return email;
-  }
-  return "Unknown";
-}
-
 export function LeadTasksSection({
   events,
   viewerUserId,
@@ -132,6 +112,8 @@ export function LeadTasksSection({
     const raw = Array.isArray(events) ? events : [];
     return sortLeadTasksForDisplay(raw);
   }, [events]);
+
+  const creatorLookup = useMemo(() => buildCreatorLookupFromTeamMembers(teamMembers), [teamMembers]);
 
   return (
     <section className="flex flex-col gap-3" aria-labelledby="lead-tasks-heading">
@@ -146,9 +128,20 @@ export function LeadTasksSection({
         <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           {list.map((ev) => {
             const createdByViewer = isCreatedByViewer(ev, viewerUserId, viewerEmail);
-            const assigneeLabel = formatAssigneeLabel(ev.owner_user_id, viewerUserId, teamMembers);
-            const assigneeLine =
-              assigneeLabel === "Unassigned" ? "Unassigned" : `Assigned to ${assigneeLabel}`;
+            const addedBy = formatEventAddedByLabel(
+              {
+                user_name: ev.user_name ?? null,
+                created_by_user_id: ev.created_by_user_id ?? null,
+              },
+              viewerEmail,
+              viewerUserId,
+              creatorLookup,
+            );
+            const assignedTo = formatEventAssigneeLabel(
+              { owner_user_id: ev.owner_user_id ?? null },
+              viewerUserId,
+              creatorLookup,
+            );
             const done = Boolean(ev.completed_at?.trim());
             const assigneeCanToggle = Boolean(viewerUserId && ev.owner_user_id === viewerUserId);
             const rowClasses = [
@@ -207,7 +200,10 @@ export function LeadTasksSection({
                       {ev.start_time ? formatInPST(ev.start_time) : "Time not set"}
                     </p>
                     <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
-                      {assigneeLine}
+                      Added by {addedBy}
+                    </p>
+                    <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                      Assigned to {assignedTo}
                     </p>
                   </div>
                 </div>

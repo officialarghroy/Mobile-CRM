@@ -2,7 +2,7 @@
 
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
-import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
+import { formatEventAddedByLabel, formatEventAssigneeLabel } from "@/lib/calendarCreatorLabel";
 import { calendarScopeLabel, isCalendarEventMine } from "@/lib/calendarEventDisplay";
 import { pstWeekdayIndexSunday0, startOfPSTCalendarDayUtc } from "@/lib/timezone";
 import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
@@ -98,6 +98,14 @@ export function DayTimeline({
               ))}
 
               {placed.map(({ event, topPx, heightPx }) => {
+                const addedBy = formatEventAddedByLabel(event, viewerEmail, viewerUserId, creatorLookup);
+                const assignedTo = formatEventAssigneeLabel(event, viewerUserId, creatorLookup);
+                const titleTip = `${event.title} · ${calendarScopeLabel(event.calendar_scope)} · Added by ${addedBy} · Assigned to ${assignedTo}`;
+                const fullDetail = heightPx >= 62;
+                const showMeta = heightPx >= 28;
+                const padClass = fullDetail ? "px-1.5 py-1.5" : showMeta ? "px-1 py-1" : "px-1 py-0.5";
+                const titleClampClass = fullDetail ? "line-clamp-2" : "line-clamp-1";
+
                 return (
                   <div
                     key={event.id}
@@ -105,15 +113,16 @@ export function DayTimeline({
                     style={{
                       top: topPx,
                       height: heightPx,
-                      minHeight: 44,
                     }}
-                    title={`${event.title} · ${calendarScopeLabel(event.calendar_scope)} · Added by ${formatEventCreatorLabel(event, viewerEmail, viewerUserId, creatorLookup)}`}
+                    title={titleTip}
                   >
-                    <div className="flex h-full min-h-[44px] flex-col overflow-hidden rounded-[calc(0.5rem-1px)] px-1.5 py-1">
+                    <div
+                      className={`flex h-full min-h-0 flex-col overflow-y-auto overflow-x-hidden rounded-[calc(0.5rem-1px)] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${padClass}`}
+                    >
                       <div className="flex min-h-0 flex-1 items-start gap-1">
                         <div className="min-w-0 flex-1">
                           <p
-                            className={`text-xs font-semibold leading-tight line-clamp-2 ${
+                            className={`text-xs font-semibold leading-tight [overflow-wrap:anywhere] ${titleClampClass} ${
                               event.completed_at?.trim()
                                 ? "line-through decoration-[var(--text-secondary)] opacity-90"
                                 : ""
@@ -121,9 +130,25 @@ export function DayTimeline({
                           >
                             {event.title}
                           </p>
-                          <p className="mt-0.5 truncate text-[0.6rem] font-medium text-red-600 dark:text-red-400">
-                            Added by {formatEventCreatorLabel(event, viewerEmail, viewerUserId, creatorLookup)}
-                          </p>
+                          {fullDetail ? (
+                            <>
+                              <p className="mt-1 text-[0.65rem] font-medium leading-snug text-red-600 [overflow-wrap:anywhere] dark:text-red-400">
+                                Added by {addedBy}
+                              </p>
+                              <p className="mt-0.5 text-[0.65rem] font-medium leading-snug text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                                Assigned to {assignedTo}
+                              </p>
+                            </>
+                          ) : showMeta ? (
+                            <p className="mt-0.5 truncate text-[0.58rem] font-medium leading-tight text-[var(--text-secondary)]">
+                              <span className="text-red-600 dark:text-red-400">Added by {addedBy}</span>
+                              <span className="text-[var(--text-tertiary)]" aria-hidden>
+                                {" "}
+                                ·{" "}
+                              </span>
+                              <span>Assigned to {assignedTo}</span>
+                            </p>
+                          ) : null}
                         </div>
                         <DeleteCalendarEventButton
                           eventId={event.id}

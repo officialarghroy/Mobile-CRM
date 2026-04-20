@@ -1,58 +1,29 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { startTransition, useLayoutEffect, useRef, useState } from "react";
 import { RiNotification3Line } from "react-icons/ri";
 import { AppHeaderActions } from "@/components/navigation/AppHeaderActions";
 import { HamburgerMenu } from "@/components/navigation/HamburgerMenu";
 import type { MenuUserProfile } from "@/lib/menuUserProfile";
 import { getRouteHeaderMeta } from "@/lib/routeHeaderMeta";
-import { getSupabaseBrowserClient } from "@/lib/supabase";
+import { useNotificationUnreadCount } from "@/hooks/useNotificationUnreadCount";
 
 type AppHeaderProps = {
   initialProfile: MenuUserProfile;
 };
 
-function HeaderNotificationBell({ initialProfile }: { initialProfile: MenuUserProfile }) {
+function HeaderNotificationBell({ unreadCount }: { unreadCount: number }) {
   const router = useRouter();
-  const pathname = usePathname() ?? "";
-  const [fetchedUnread, setFetchedUnread] = useState<number | null>(null);
   const [popScale, setPopScale] = useState(1);
   const hasPlayedPop = useRef(false);
 
-  const unreadCount =
-    fetchedUnread ?? initialProfile.unreadNotificationCount;
-
-  useEffect(() => {
-    if (!initialProfile.hasSupabaseAuth) return;
-    let cancelled = false;
-    const refreshUnread = async () => {
-      try {
-        const supabase = getSupabaseBrowserClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { count, error } = await supabase
-          .from("notifications")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("is_read", false);
-        if (!cancelled && !error && typeof count === "number") {
-          setFetchedUnread(count);
-        }
-      } catch {
-        /* ignore */
-      }
-    };
-    void refreshUnread();
-    return () => {
-      cancelled = true;
-    };
-  }, [pathname, initialProfile.hasSupabaseAuth]);
-
   useLayoutEffect(() => {
-    if (unreadCount <= 0 || hasPlayedPop.current) return;
+    if (unreadCount <= 0) {
+      hasPlayedPop.current = false;
+      return;
+    }
+    if (hasPlayedPop.current) return;
     hasPlayedPop.current = true;
     startTransition(() => {
       setPopScale(1.12);
@@ -95,11 +66,18 @@ function HeaderNotificationBell({ initialProfile }: { initialProfile: MenuUserPr
 export function AppHeader({ initialProfile }: AppHeaderProps) {
   const pathname = usePathname() ?? "";
   const { title, subtitle } = getRouteHeaderMeta(pathname);
+  const notificationUnreadCount = useNotificationUnreadCount({
+    initialUnreadCount: initialProfile.unreadNotificationCount,
+    hasSupabaseAuth: initialProfile.hasSupabaseAuth,
+  });
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-[var(--border)] bg-[var(--surface)] pt-[env(safe-area-inset-top)] shadow-[var(--shadow-card)]">
       <div className="flex w-full items-center gap-3 px-5 py-3">
-        <HamburgerMenu initialProfile={initialProfile} />
+        <HamburgerMenu
+          initialProfile={initialProfile}
+          notificationUnreadCount={notificationUnreadCount}
+        />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[1.1875rem] font-bold leading-tight tracking-tight text-[var(--text-primary)] sm:text-[1.25rem]">
             {title}
@@ -111,7 +89,7 @@ export function AppHeader({ initialProfile }: AppHeaderProps) {
           ) : null}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          <HeaderNotificationBell initialProfile={initialProfile} />
+          <HeaderNotificationBell unreadCount={notificationUnreadCount} />
           <AppHeaderActions />
         </div>
       </div>

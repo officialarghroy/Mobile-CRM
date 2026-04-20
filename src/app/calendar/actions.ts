@@ -131,17 +131,16 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
     revalidatePath("/tasks");
     revalidatePath("/notifications", "page");
 
-    if (calendar_scope === "team" && ownerUserId !== userId) {
-      const { error: notifyError } = await supabase.from("notifications").insert({
-        user_id: ownerUserId,
-        message: `You\u2019ve been assigned: ${title}`,
-        type: "task_assigned",
-        entity_id: newId,
-        entity_type: "event",
-      });
-      if (notifyError) {
-        console.error("Failed to create task assignment notification:", notifyError);
-      }
+    // Notify whoever owns the task (self-assign, teammate, or personal), so in-app alerts always match My Tasks.
+    const { error: notifyError } = await supabase.from("notifications").insert({
+      user_id: ownerUserId,
+      message: `You\u2019ve been assigned: ${title}`,
+      type: "task_assigned",
+      entity_id: newId,
+      entity_type: "event",
+    });
+    if (notifyError) {
+      console.error("Failed to create task assignment notification:", notifyError);
     }
 
     return normalizeCalendarEventRow({
@@ -152,6 +151,7 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
       user_name: email,
       calendar_scope,
       owner_user_id: ownerUserId,
+      created_by_user_id: userId,
       completed_at: null,
     });
   } catch (error) {

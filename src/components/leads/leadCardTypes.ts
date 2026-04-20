@@ -1,0 +1,17 @@
+export type LeadStatus = "pending" | "urgent" | "paid" | "not_paid";
+
+/** Matches lead rows from `/leads` (includes business + address for CRM detail). */
+export type LeadCardData = {
+  id: string;
+  name: string;
+  business: string;
+  address: string;
+  type: "lead" | "client";
+  update: string;
+  activityAt: string;
+  timestamp: string;
+  created_at: string;
+  status?: LeadStatus;
+  is_read?: boolean;
+  priority_order?: number;
+};

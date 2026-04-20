@@ -15,6 +15,7 @@ export function RegisterServiceWorker() {
     let cancelled = false;
     let refreshing = false;
     let visibilityHandler: (() => void) | null = null;
+    let focusHandler: (() => void) | null = null;
 
     const onControllerChange = () => {
       if (cancelled || refreshing) return;
@@ -47,6 +48,14 @@ export function RegisterServiceWorker() {
         };
         document.addEventListener("visibilitychange", visibilityHandler);
 
+        /** PWA / mobile: window focus fires when returning from home screen without always firing visibility. */
+        const onWindowFocus = () => {
+          if (cancelled) return;
+          void registration.update();
+        };
+        focusHandler = onWindowFocus;
+        window.addEventListener("focus", onWindowFocus);
+
         await registration.update();
       } catch (error) {
         console.error("Service worker registration failed:", error);
@@ -58,6 +67,9 @@ export function RegisterServiceWorker() {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       if (visibilityHandler) {
         document.removeEventListener("visibilitychange", visibilityHandler);
+      }
+      if (focusHandler) {
+        window.removeEventListener("focus", focusHandler);
       }
     };
   }, []);

@@ -2,35 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { RiArrowDownSLine } from "react-icons/ri";
+import { RiArrowDownSLine, RiSearchLine } from "react-icons/ri";
 import {
   markLeadAsRead,
   updateLeadPriority,
   updateLeadStatus,
 } from "@/app/leads/actions";
 import { AddEventFromLeadModal } from "@/components/leads/AddEventFromLeadModal";
+import { LeadsSearchModal } from "@/components/leads/LeadsSearchModal";
+import { sortLeadsForDisplay } from "@/lib/leadsListClientQuery";
 import { formatLeadsListActivityLabel } from "@/lib/timezone";
 import type { TeamMemberRow } from "@/lib/teamAccess";
+import type { LeadCardData, LeadStatus } from "./leadCardTypes";
+
+export type { LeadCardData, LeadStatus } from "./leadCardTypes";
 
 type LeadFilter = "all" | "lead" | "client" | "paid";
-
-export type LeadStatus = "pending" | "urgent" | "paid" | "not_paid";
-
-/** Matches lead rows from `/leads` (includes business + address for CRM detail). */
-export type LeadCardData = {
-  id: string;
-  name: string;
-  business: string;
-  address: string;
-  type: "lead" | "client";
-  update: string;
-  activityAt: string;
-  timestamp: string;
-  created_at: string;
-  status?: LeadStatus;
-  is_read?: boolean;
-  priority_order?: number;
-};
 
 type LeadsListSectionProps = {
   leads: LeadCardData[];
@@ -67,20 +54,18 @@ function persistReadIds(ids: Set<string>) {
   }
 }
 
-function sortLeadsForDisplay(list: LeadCardData[]): LeadCardData[] {
-  return [...list].sort((a, b) => {
-    const pa = a.priority_order ?? 0;
-    const pb = b.priority_order ?? 0;
-    if (pb !== pa) return pb - pa;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
-}
-
 function filterItemsForTab(items: LeadCardData[], filter: LeadFilter): LeadCardData[] {
   if (filter === "all") return items;
   if (filter === "paid") return items.filter((l) => l.status === "paid");
   return items.filter((l) => l.type === filter);
 }
+
+const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
+  { value: "pending", label: "Pending" },
+  { value: "urgent", label: "Urgent" },
+  { value: "paid", label: "Paid" },
+  { value: "not_paid", label: "Not Paid" },
+];
 
 /** Minimal status indicator next to name (visual only). */
 function getStatusDotClass(status: LeadStatus | undefined): string {
@@ -97,13 +82,6 @@ function getStatusDotClass(status: LeadStatus | undefined): string {
       return "bg-[var(--text-tertiary)]";
   }
 }
-
-const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "urgent", label: "Urgent" },
-  { value: "paid", label: "Paid" },
-  { value: "not_paid", label: "Not Paid" },
-];
 
 function computeMoveUp(
   items: LeadCardData[],
@@ -178,6 +156,7 @@ export function LeadsListSection({
   viewerEmail,
 }: LeadsListSectionProps) {
   const [filter, setFilter] = useState<LeadFilter>("all");
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [items, setItems] = useState<LeadCardData[]>(() => sortLeadsForDisplay(leads));
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
@@ -276,6 +255,16 @@ export function LeadsListSection({
 
   const sortedForView = useMemo(() => sortLeadsForDisplay(filteredLeads), [filteredLeads]);
 
+  const tabOrderForReorder = useMemo(() => sortLeadsForDisplay(filteredLeads), [filteredLeads]);
+
+  const tabIndexById = useMemo(() => {
+    const m = new Map<string, number>();
+    tabOrderForReorder.forEach((l, i) => {
+      m.set(l.id, i);
+    });
+    return m;
+  }, [tabOrderForReorder]);
+
   const rowsWithPstLabel = useMemo(
     () =>
       sortedForView.map((lead) => ({
@@ -290,14 +279,21 @@ export function LeadsListSection({
     [readIds],
   );
 
+  const emptyMessage = (() => {
+    if (!leads.length) return "No leads yet - add your first lead";
+    if (filter === "paid") return "No paid leads";
+    return "No entries match this filter";
+  })();
+
   return (
     <section className="flex flex-col space-y-4" aria-label="Leads list">
-      <div className="flex flex-wrap gap-2">
-        <div className="flex flex-wrap gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+      <div className="flex w-full min-w-0 items-center gap-2">
+        <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max min-w-0 max-w-full flex-nowrap gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
           <button
             type="button"
             onClick={() => setFilter("all")}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               filter === "all"
                 ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
@@ -308,7 +304,7 @@ export function LeadsListSection({
           <button
             type="button"
             onClick={() => setFilter("lead")}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               filter === "lead"
                 ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
@@ -319,7 +315,7 @@ export function LeadsListSection({
           <button
             type="button"
             onClick={() => setFilter("client")}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               filter === "client"
                 ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
@@ -330,7 +326,7 @@ export function LeadsListSection({
           <button
             type="button"
             onClick={() => setFilter("paid")}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               filter === "paid"
                 ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
                 : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
@@ -338,26 +334,43 @@ export function LeadsListSection({
           >
             Paid
           </button>
+          </div>
+        </div>
+
+        <div className="ml-auto shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+          <button
+            type="button"
+            aria-label="Search leads"
+            aria-haspopup="dialog"
+            aria-expanded={searchModalOpen}
+            onClick={() => setSearchModalOpen(true)}
+            className="flex touch-manipulation items-center justify-center rounded-lg px-2.5 py-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+          >
+            <RiSearchLine className="h-5 w-5 shrink-0" aria-hidden />
+          </button>
         </div>
       </div>
 
+      <LeadsSearchModal
+        open={searchModalOpen}
+        onOpenChange={setSearchModalOpen}
+        leads={items}
+        onBeforeNavigate={markAsRead}
+      />
+
       {!rowsWithPstLabel.length ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-          <p>
-            {!leads.length
-              ? "No leads yet - add your first lead"
-              : filter === "paid"
-                ? "No paid leads"
-                : "No entries match this filter"}
-          </p>
+          <p>{emptyMessage}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {rowsWithPstLabel.map((lead, rowIndex) => {
+          {rowsWithPstLabel.map((lead) => {
             const status = lead.status ?? "pending";
             const unread = !effectiveIsRead(lead);
-            const canMoveUp = rowIndex > 0;
-            const canMoveDown = rowIndex < rowsWithPstLabel.length - 1;
+            const tabIdx = tabIndexById.get(lead.id);
+            const canMoveUp = tabIdx !== undefined && tabIdx > 0;
+            const canMoveDown =
+              tabIdx !== undefined && tabIdx < tabOrderForReorder.length - 1;
 
             return (
               <div
@@ -368,15 +381,18 @@ export function LeadsListSection({
               >
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-                      {unread ? (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-[#2563eb]" aria-hidden />
-                      ) : (
+                      <span className="flex shrink-0 items-center gap-0.5" aria-hidden>
+                        {unread ? (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-[#2563eb]"
+                            title="Unread"
+                          />
+                        ) : null}
                         <span
                           className={`h-2 w-2 shrink-0 rounded-full ${getStatusDotClass(status)}`}
-                          aria-hidden
                           title={STATUS_OPTIONS.find((o) => o.value === status)?.label ?? "Status"}
                         />
-                      )}
+                      </span>
                       <Link
                         href={`/leads/${lead.id}`}
                         prefetch

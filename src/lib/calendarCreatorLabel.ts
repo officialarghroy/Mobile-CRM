@@ -20,15 +20,19 @@ export function buildCreatorLookupFromTeamMembers(rows: TeamMemberRow[]): Creato
   return { byUserId, byEmail };
 }
 
-/** Full label for list and tooltips: team display name when known, else email local part. */
-export function formatEventCreatorLabel(
-  event: Pick<CalendarEventRow, "user_name" | "owner_user_id">,
+/** Display name for whoever created the event (uses `created_by_user_id`, then legacy `user_name`). */
+export function formatEventAddedByLabel(
+  event: Pick<CalendarEventRow, "user_name" | "created_by_user_id">,
   _viewerEmail: string,
-  _viewerUserId: string | null,
+  viewerUserId: string | null,
   lookup: CreatorLookup,
 ): string {
-  if (event.owner_user_id) {
-    const fromId = lookup.byUserId[event.owner_user_id];
+  const cid = event.created_by_user_id?.trim();
+  if (viewerUserId && cid && cid === viewerUserId) {
+    return "You";
+  }
+  if (cid) {
+    const fromId = lookup.byUserId[cid];
     if (fromId && fromId !== "—") return fromId;
   }
   const em = event.user_name?.trim().toLowerCase();
@@ -43,14 +47,38 @@ export function formatEventCreatorLabel(
   return "Unknown";
 }
 
-/** Short text for tight calendar cells (initials or first word). */
-export function shortCreatorTag(
-  event: Pick<CalendarEventRow, "user_name" | "owner_user_id">,
+/** Display name for whoever owns / is assigned the task. */
+export function formatEventAssigneeLabel(
+  event: Pick<CalendarEventRow, "owner_user_id">,
+  viewerUserId: string | null,
+  lookup: CreatorLookup,
+): string {
+  const oid = event.owner_user_id?.trim();
+  if (!oid) return "Unassigned";
+  if (viewerUserId && oid === viewerUserId) return "You";
+  const fromId = lookup.byUserId[oid];
+  if (fromId && fromId !== "—") return fromId;
+  return "Unknown";
+}
+
+/** @deprecated Use formatEventAddedByLabel for creator lines. Kept for any legacy callers. */
+export function formatEventCreatorLabel(
+  event: Pick<CalendarEventRow, "user_name" | "owner_user_id" | "created_by_user_id">,
   viewerEmail: string,
   viewerUserId: string | null,
   lookup: CreatorLookup,
 ): string {
-  const full = formatEventCreatorLabel(event, viewerEmail, viewerUserId, lookup);
+  return formatEventAddedByLabel(event, viewerEmail, viewerUserId, lookup);
+}
+
+/** Short text for tight calendar cells (initials or first word). */
+export function shortCreatorTag(
+  event: Pick<CalendarEventRow, "user_name" | "owner_user_id" | "created_by_user_id">,
+  viewerEmail: string,
+  viewerUserId: string | null,
+  lookup: CreatorLookup,
+): string {
+  const full = formatEventAssigneeLabel(event, viewerUserId, lookup);
   const parts = full.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
     const a = parts[0]![0] ?? "";

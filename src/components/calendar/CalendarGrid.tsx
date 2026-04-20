@@ -7,7 +7,7 @@ import { DeleteCalendarEventButton } from "./DeleteCalendarEventButton";
 import type { CalendarGridEvent } from "@/components/calendar/calendarTypes";
 import { parseEventStart } from "@/components/calendar/dayTimelineUtils";
 import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
-import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
+import { formatEventAddedByLabel, formatEventAssigneeLabel } from "@/lib/calendarCreatorLabel";
 import {
   addGregorianMonths,
   currentPstYearMonth,
@@ -222,14 +222,14 @@ export function CalendarGrid({
                   <button
                     type="button"
                     onClick={() => setSelectedPstKey(pstKey)}
-                    className={`flex min-h-[2.75rem] w-full flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors hover:bg-[var(--surface-muted)] ${
+                    className={`flex min-h-[2.75rem] w-full flex-1 flex-col items-center justify-center gap-0.5 py-1.5 transition-colors duration-200 ease-out hover:bg-[var(--surface-muted)] motion-reduce:transition-none ${
                       isToday && !isSelected ? "bg-[var(--accent-muted)]/50" : ""
                     }`}
                   >
                     <span
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-[color,background-color,box-shadow] duration-200 ease-out motion-reduce:transition-none ${
                         isSelected
-                          ? "bg-[var(--accent-strong)] text-white"
+                          ? "bg-[var(--accent-strong)] text-white shadow-sm"
                           : isToday
                             ? "text-[var(--accent-strong)]"
                             : "text-[var(--text-primary)]"
@@ -284,8 +284,11 @@ export function CalendarGrid({
                   >
                     {ev.title}
                   </p>
-                  <p className="mt-1 text-[0.7rem] font-medium text-red-600 dark:text-red-400">
-                    Added by {formatEventCreatorLabel(ev, viewerEmail, viewerUserId, creatorLookup)}
+                  <p className="mt-1 text-[0.7rem] font-medium leading-snug text-red-600 [overflow-wrap:anywhere] dark:text-red-400">
+                    Added by {formatEventAddedByLabel(ev, viewerEmail, viewerUserId, creatorLookup)}
+                  </p>
+                  <p className="mt-0.5 text-[0.7rem] font-medium leading-snug text-[var(--text-secondary)] [overflow-wrap:anywhere]">
+                    Assigned to {formatEventAssigneeLabel(ev, viewerUserId, creatorLookup)}
                   </p>
                 </div>
                 <DeleteCalendarEventButton

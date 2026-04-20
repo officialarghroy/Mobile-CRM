@@ -2,7 +2,7 @@
   "id": "/",
   "name": "TSS CRM",
   "short_name": "TSS CRM",
-  "description": "TSS CRM: manage leads and activity with your team",
+  "description": "TSS CRM: leads, calendar, tasks, notifications, and team activity in one place",
   "lang": "en",
   "dir": "ltr",
   "display": "standalone",
@@ -50,7 +50,7 @@
       "name": "Calendar",
       "short_name": "Calendar",
       "description": "Open calendar",
-      "url": "/calendar",
+      "url": "/calendar?view=calendar",
       "icons": [{ "src": "/Logo.webp", "sizes": "192x192", "type": "image/webp" }]
     },
     {

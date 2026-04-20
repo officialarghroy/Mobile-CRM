@@ -33,7 +33,7 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-const appDescription = "TSS CRM: manage leads and activity with your team";
+const appDescription = "TSS CRM: leads, calendar, tasks, notifications, and team activity in one place";
 
 export const metadata: Metadata = {
   title: "TSS CRM",

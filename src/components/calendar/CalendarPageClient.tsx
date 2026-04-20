@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
@@ -9,7 +9,7 @@ import { DeleteCalendarEventButton } from "@/components/calendar/DeleteCalendarE
 import { Button } from "@/components/ui/Button";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
 import type { CreatorLookup } from "@/lib/calendarCreatorLabel";
-import { formatEventCreatorLabel } from "@/lib/calendarCreatorLabel";
+import { formatEventAddedByLabel, formatEventAssigneeLabel } from "@/lib/calendarCreatorLabel";
 import {
   calendarScopeLabel,
   formatCalendarTimeRange,
@@ -27,6 +27,7 @@ type ListEvent = {
   title: string;
   time: string;
   addedBy: string;
+  assignedTo: string;
   mine: boolean;
   calendar_scope: CalendarScope;
   completed: boolean;
@@ -75,7 +76,8 @@ function rowToListEvent(
     id: row.id,
     title: row.title,
     time: formatCalendarTimeRange(row.start_time, row.end_time),
-    addedBy: formatEventCreatorLabel(row, viewerEmail, viewerUserId, lookup),
+    addedBy: formatEventAddedByLabel(row, viewerEmail, viewerUserId, lookup),
+    assignedTo: formatEventAssigneeLabel(row, viewerUserId, lookup),
     mine,
     calendar_scope: row.calendar_scope,
     completed: Boolean(row.completed_at?.trim()),
@@ -87,11 +89,27 @@ function filterEventsForListShow(
   show: ListShowFilter,
   teamMembers: TeamMemberRow[],
   viewerUserId: string | null,
+  viewerEmail: string,
 ): CalendarGridEvent[] {
   const teamOnly = events.filter((e) => e.calendar_scope === "team");
   if (show.type === "team") return teamOnly;
   if (viewerUserId && show.userId === viewerUserId) {
-    return events.filter((e) => e.calendar_scope === "personal");
+    const meRow = teamMembers.find((tm) => tm.user_id === viewerUserId);
+    if (meRow) {
+      return events.filter(
+        (e) =>
+          e.calendar_scope === "personal" ||
+          (e.calendar_scope === "team" && eventBelongsToMember(e, meRow)),
+      );
+    }
+    const ve = viewerEmail.trim().toLowerCase();
+    return events.filter(
+      (e) =>
+        e.calendar_scope === "personal" ||
+        (e.calendar_scope === "team" &&
+          (e.owner_user_id === viewerUserId ||
+            Boolean(ve && e.user_name?.trim().toLowerCase() === ve))),
+    );
   }
   const m = teamMembers.find((tm) => tm.user_id === show.userId);
   if (!m) return teamOnly;
@@ -165,10 +183,11 @@ function CalendarEventListRow({ event }: { event: ListEvent }) {
         </p>
         <p
           className="crm-meta mt-1 font-medium text-red-600 dark:text-red-400"
-          title={`${calendarScopeLabel(event.calendar_scope)} · Added by ${event.addedBy}`}
+          title={`${calendarScopeLabel(event.calendar_scope)} · Added by ${event.addedBy} · Assigned to ${event.assignedTo}`}
         >
           Added by {event.addedBy}
         </p>
+        <p className="crm-meta font-medium text-[var(--text-secondary)]">Assigned to {event.assignedTo}</p>
         <p className="text-card-meta mt-1">{event.time}</p>
       </div>
       <DeleteCalendarEventButton
@@ -199,21 +218,18 @@ export function CalendarPageClient({
     [teamMembers],
   );
 
-  const [view, setView] = useState<"list" | "calendar">(() => viewFromSearchParams(searchParams));
-  const [listShow, setListShow] = useState<ListShowFilter>(() =>
-    listShowFromSearchParams(searchParams, memberIdSet, viewerUserId),
+  const view = useMemo(() => viewFromSearchParams(searchParams), [searchParams]);
+  const listShow = useMemo(
+    () => listShowFromSearchParams(searchParams, memberIdSet, viewerUserId),
+    [searchParams, memberIdSet, viewerUserId],
   );
+  const [isNavPending, startNavTransition] = useTransition();
   const [newEventOpenedAt, setNewEventOpenedAt] = useState<number | null>(null);
   const [stagedEvents, setStagedEvents] = useState<CalendarEventRow[]>([]);
   const [calendarFocusStart, setCalendarFocusStart] = useState<{
     startIso: string;
     nonce: number;
   } | null>(null);
-
-  useEffect(() => {
-    setView(viewFromSearchParams(searchParams));
-    setListShow(listShowFromSearchParams(searchParams, memberIdSet, viewerUserId));
-  }, [searchParams, memberIdSet, viewerUserId]);
 
   /** Old ?cal=personal links: rewrite to ?u=<you> so the address bar matches the name pill. */
   useEffect(() => {
@@ -250,8 +266,8 @@ export function CalendarPageClient({
   );
 
   const listEventsFiltered = useMemo(
-    () => filterEventsForListShow(mergedEvents, listShow, teamMembers, viewerUserId),
-    [mergedEvents, listShow, teamMembers, viewerUserId],
+    () => filterEventsForListShow(mergedEvents, listShow, teamMembers, viewerUserId, viewerEmail),
+    [mergedEvents, listShow, teamMembers, viewerUserId, viewerEmail],
   );
 
   const displayListEvents = useMemo(
@@ -278,51 +294,53 @@ export function CalendarPageClient({
 
   const setCalendarView = useCallback(
     (next: "list" | "calendar") => {
-      setView(next);
-      replaceQueryParams((params) => {
-        if (next === "calendar") {
-          params.set("view", "calendar");
-        } else {
-          params.delete("view");
-        }
+      startNavTransition(() => {
+        replaceQueryParams((params) => {
+          if (next === "calendar") {
+            params.set("view", "calendar");
+          } else {
+            params.delete("view");
+          }
+        });
       });
     },
-    [replaceQueryParams],
+    [replaceQueryParams, startNavTransition],
   );
 
   const setListShowAndUrl = useCallback(
     (next: ListShowFilter) => {
-      setListShow(next);
-      replaceQueryParams((params) => {
-        params.delete("cal");
-        params.delete("u");
-        if (next.type === "member") {
-          params.set("u", next.userId);
-        }
+      startNavTransition(() => {
+        replaceQueryParams((params) => {
+          params.delete("cal");
+          params.delete("u");
+          if (next.type === "member") {
+            params.set("u", next.userId);
+          }
+        });
       });
     },
-    [replaceQueryParams],
+    [replaceQueryParams, startNavTransition],
   );
 
   /** One navigation for filter + Events vs Calendar so two replaces cannot drop `?u=` or `view`. */
   const setListShowViewAndUrl = useCallback(
     (next: ListShowFilter, nextView: "list" | "calendar") => {
-      setListShow(next);
-      setView(nextView);
-      replaceQueryParams((params) => {
-        params.delete("cal");
-        params.delete("u");
-        if (next.type === "member") {
-          params.set("u", next.userId);
-        }
-        if (nextView === "calendar") {
-          params.set("view", "calendar");
-        } else {
-          params.delete("view");
-        }
+      startNavTransition(() => {
+        replaceQueryParams((params) => {
+          params.delete("cal");
+          params.delete("u");
+          if (next.type === "member") {
+            params.set("u", next.userId);
+          }
+          if (nextView === "calendar") {
+            params.set("view", "calendar");
+          } else {
+            params.delete("view");
+          }
+        });
       });
     },
-    [replaceQueryParams],
+    [replaceQueryParams, startNavTransition],
   );
 
   const clearCalendarFocus = useCallback(() => setCalendarFocusStart(null), []);
@@ -336,9 +354,8 @@ export function CalendarPageClient({
       if (row.calendar_scope === "personal" && viewerUserId) {
         setListShowViewAndUrl({ type: "member", userId: viewerUserId }, "list");
       } else if (row.calendar_scope === "team" && ownerId) {
-        // Your name pill shows personal events only; Team shows shared team events including self-assigned.
         if (viewerUserId && ownerId === viewerUserId) {
-          setListShowViewAndUrl({ type: "team" }, "list");
+          setListShowViewAndUrl({ type: "member", userId: viewerUserId }, "list");
         } else if (memberIdSet.has(ownerId)) {
           setListShowViewAndUrl({ type: "member", userId: ownerId }, "list");
         } else {
@@ -358,9 +375,9 @@ export function CalendarPageClient({
   );
 
   const activeSegment =
-    "border border-transparent bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)]";
+    "border border-transparent bg-[var(--accent-strong)] text-white shadow-[0_5px_16px_rgba(54,110,250,0.24)] transition-[color,background-color,border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none";
   const inactiveSegment =
-    "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)]";
+    "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-primary)] transition-[color,background-color,border-color,box-shadow] duration-200 ease-out hover:bg-[var(--surface-muted)] motion-reduce:transition-none";
 
   const listFilterHint = useMemo(() => {
     if (listShow.type === "team") return "Team events";
@@ -422,83 +439,99 @@ export function CalendarPageClient({
         </button>
       </div>
 
-      <section
-        className={`flex shrink-0 flex-col space-y-5 ${view !== "list" ? "hidden" : ""}`}
-        aria-hidden={view !== "list"}
-        aria-label={listFilterHint}
-      >
-        <div className="flex shrink-0 flex-col gap-2">
-          <p className="crm-section-label">Filter</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setListShowAndUrl({ type: "team" })}
-              className={`inline-flex h-10 min-h-10 items-center rounded-full px-4 text-sm font-medium transition-colors ${
-                listShow.type === "team" ? activeSegment : inactiveSegment
-              }`}
-            >
-              Team
-            </button>
-            {sortedTeamMembers.map((m) => {
-              const active = listShow.type === "member" && listShow.userId === m.user_id;
-              const label = memberSectionHeading(m);
-              return (
-                <button
-                  key={m.user_id}
-                  type="button"
-                  title={label}
-                  onClick={() => setListShowAndUrl({ type: "member", userId: m.user_id })}
-                  className={`inline-flex h-10 max-w-[min(100%,14rem)] min-h-10 min-w-0 items-center rounded-full px-4 text-sm font-medium transition-colors ${
-                    active ? activeSegment : inactiveSegment
-                  }`}
-                >
-                  <span className="truncate">{label}</span>
-                </button>
-              );
-            })}
+      <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+        <section
+          aria-hidden={view !== "list"}
+          aria-label={listFilterHint}
+          className={
+            view === "list"
+              ? "relative z-10 flex min-h-0 flex-1 flex-col space-y-5 opacity-100 transition-opacity duration-200 ease-out motion-reduce:transition-none"
+              : "pointer-events-none absolute inset-0 z-0 flex flex-col space-y-5 overflow-hidden opacity-0 transition-opacity duration-200 ease-out motion-reduce:transition-none"
+          }
+        >
+          <div className="flex shrink-0 flex-col gap-2">
+            <p className="crm-section-label">Filter</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setListShowAndUrl({ type: "team" })}
+                className={`inline-flex h-10 min-h-10 items-center rounded-full px-4 text-sm font-medium ${
+                  listShow.type === "team" ? activeSegment : inactiveSegment
+                }`}
+              >
+                Team
+              </button>
+              {sortedTeamMembers.map((m) => {
+                const active = listShow.type === "member" && listShow.userId === m.user_id;
+                const label = memberSectionHeading(m);
+                return (
+                  <button
+                    key={m.user_id}
+                    type="button"
+                    title={label}
+                    onClick={() => setListShowAndUrl({ type: "member", userId: m.user_id })}
+                    className={`inline-flex h-10 max-w-[min(100%,14rem)] min-h-10 min-w-0 items-center rounded-full px-4 text-sm font-medium ${
+                      active ? activeSegment : inactiveSegment
+                    }`}
+                  >
+                    <span className="truncate">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="crm-section-label">{listFilterHint}</p>
-          <div className="flex min-w-0 w-full shrink-0 flex-col items-stretch gap-1 sm:w-auto sm:items-end">
-            {canAddEventsOnListView ? (
-              <Button type="button" className="px-4" onClick={() => setNewEventOpenedAt(Date.now())}>
-                Add Event
-              </Button>
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="crm-section-label">{listFilterHint}</p>
+            <div className="flex min-w-0 w-full shrink-0 flex-col items-stretch gap-1 sm:w-auto sm:items-end">
+              {canAddEventsOnListView ? (
+                <Button type="button" className="px-4" onClick={() => setNewEventOpenedAt(Date.now())}>
+                  Add Event
+                </Button>
+              ) : (
+                <p className="max-w-md text-left text-xs leading-snug text-[var(--text-secondary)]">
+                  Only this teammate can add events from this list view. Switch to Team, your own name, or use Calendar.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div
+            className={`min-h-0 flex-1 flex flex-col transition-opacity duration-200 ease-out motion-reduce:transition-none ${
+              isNavPending ? "opacity-70" : "opacity-100"
+            }`}
+          >
+            {!displayListEvents.length ? (
+              <div className={emptyListCardClass}>No events</div>
             ) : (
-              <p className="max-w-md text-left text-xs leading-snug text-[var(--text-secondary)]">
-                Only this teammate can add events from this list view. Switch to Team, your own name, or use Calendar.
-              </p>
+              <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+                {displayListEvents.map((event) => (
+                  <CalendarEventListRow key={event.id} event={event} />
+                ))}
+              </SurfaceListShell>
             )}
           </div>
+        </section>
+
+        <div
+          aria-hidden={view !== "calendar"}
+          className={
+            view === "calendar"
+              ? "relative z-10 flex min-h-0 min-w-0 flex-1 flex-col opacity-100 transition-opacity duration-200 ease-out motion-reduce:transition-none"
+              : "pointer-events-none absolute inset-0 z-0 flex min-h-0 min-w-0 flex-col overflow-hidden opacity-0 transition-opacity duration-200 ease-out motion-reduce:transition-none"
+          }
+        >
+          <CalendarGrid
+            className="min-h-0 min-w-0 flex-1"
+            events={mergedEvents}
+            viewerEmail={viewerEmail}
+            viewerUserId={viewerUserId}
+            creatorLookup={creatorLookup}
+            onAddEvent={() => setNewEventOpenedAt(Date.now())}
+            focusStart={calendarFocusStart}
+            onFocusStartHandled={clearCalendarFocus}
+          />
         </div>
-
-        {!displayListEvents.length ? (
-          <div className={emptyListCardClass}>No events</div>
-        ) : (
-          <SurfaceListShell className="transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
-            {displayListEvents.map((event) => (
-              <CalendarEventListRow key={event.id} event={event} />
-            ))}
-          </SurfaceListShell>
-        )}
-      </section>
-
-      <div
-        className={`min-h-0 min-w-0 flex-1 flex flex-col ${view !== "calendar" ? "hidden" : ""}`}
-        aria-hidden={view !== "calendar"}
-      >
-        <CalendarGrid
-          className="min-h-0 min-w-0 flex-1"
-          events={mergedEvents}
-          viewerEmail={viewerEmail}
-          viewerUserId={viewerUserId}
-          creatorLookup={creatorLookup}
-          onAddEvent={() => setNewEventOpenedAt(Date.now())}
-          focusStart={calendarFocusStart}
-          onFocusStartHandled={clearCalendarFocus}
-        />
       </div>
     </div>
   );
