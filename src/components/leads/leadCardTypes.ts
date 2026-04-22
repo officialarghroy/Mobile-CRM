@@ -1,4 +1,4 @@
-export type LeadStatus = "pending" | "urgent" | "paid" | "not_paid";
+export type LeadStatus = "pending" | "urgent" | "not_paid" | "completed";
 
 /** Matches lead rows from `/leads` (includes business + address for CRM detail). */
 export type LeadCardData = {

@@ -18,7 +18,7 @@ export type LeadSearchableRow = {
   address: string;
   update: string;
   type: "lead" | "client";
-  status?: "pending" | "urgent" | "paid" | "not_paid";
+  status?: "pending" | "urgent" | "not_paid" | "completed";
 };
 
 const TYPE_DISPLAY: Record<LeadSearchableRow["type"], string> = {
@@ -29,21 +29,22 @@ const TYPE_DISPLAY: Record<LeadSearchableRow["type"], string> = {
 const STATUS_OPTIONS: { value: NonNullable<LeadSearchableRow["status"]>; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "urgent", label: "Urgent" },
-  { value: "paid", label: "Paid" },
   { value: "not_paid", label: "Not Paid" },
+  { value: "completed", label: "Completed" },
 ];
 
 function leadMatchesSearchQuery(row: LeadSearchableRow, queryNorm: string): boolean {
   if (!queryNorm) return true;
   const status = row.status ?? "pending";
   const statusLabel = STATUS_OPTIONS.find((o) => o.value === status)?.label ?? "";
+  const statusSearchExtras = status === "completed" ? " paid" : "";
   const hay = [
     row.name,
     row.business,
     row.address,
     row.update,
     TYPE_DISPLAY[row.type],
-    statusLabel,
+    `${statusLabel}${statusSearchExtras}`,
   ]
     .join(" ")
     .toLowerCase();

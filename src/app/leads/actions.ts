@@ -10,7 +10,7 @@ type SupabaseError = {
   message?: string;
 };
 
-const LEAD_STATUSES = new Set(["pending", "urgent", "paid", "not_paid"]);
+const LEAD_STATUSES = new Set(["pending", "urgent", "not_paid", "completed"]);
 
 function parsePriorityOrder(raw: unknown): number {
   const n = Number(raw);
@@ -85,7 +85,8 @@ export async function markLeadAsRead(leadId: string): Promise<LeadPersistResult>
 
 export async function updateLeadStatus(leadId: string, status: string): Promise<LeadPersistResult> {
   const id = String(leadId ?? "").trim();
-  const s = String(status ?? "").trim().toLowerCase();
+  let s = String(status ?? "").trim().toLowerCase();
+  if (s === "paid") s = "completed";
   if (!id || !LEAD_STATUSES.has(s)) return { success: false };
 
   try {
