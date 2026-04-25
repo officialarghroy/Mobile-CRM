@@ -171,10 +171,30 @@ export function LeadsListSection({
     });
   }, []);
 
+  /** Paid is stored as `paid` in Postgres (legacy CHECKs often allow paid but not completed). UI shows completed via normalizeLeadStatus. */
+  const markLeadPaid = useCallback((leadId: string) => {
+    setItems((prev) => {
+      const snapshot = prev;
+      const next: LeadCardData[] = prev.map((row) =>
+        row.id === leadId ? { ...row, status: "completed" as LeadStatus } : row,
+      );
+      queueMicrotask(() => {
+        void updateLeadStatus(leadId, "paid")
+          .then((r) => {
+            if (!r.success) setItems(snapshot);
+          })
+          .catch(() => {
+            setItems(snapshot);
+          });
+      });
+      return next;
+    });
+  }, []);
+
   const onStatusSelect = useCallback(
     (leadId: string, rawValue: string) => {
       if (rawValue === LEAD_MARK_PAID_SELECT_VALUE) {
-        changeLeadStatus(leadId, "completed");
+        markLeadPaid(leadId);
         setFilter("completed");
         return;
       }
@@ -182,7 +202,7 @@ export function LeadsListSection({
         changeLeadStatus(leadId, rawValue);
       }
     },
-    [changeLeadStatus],
+    [changeLeadStatus, markLeadPaid],
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {

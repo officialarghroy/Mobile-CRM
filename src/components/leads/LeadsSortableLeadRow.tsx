@@ -6,7 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { RiArrowDownSLine, RiDraggable } from "react-icons/ri";
 import type { LeadCardData, LeadStatus } from "./leadCardTypes";
 
-/** Select option value: choosing Paid persists `completed` on the server. */
+/** Select option value: choosing Paid persists `paid` on the server (UI treats it as completed when loaded). */
 export const LEAD_MARK_PAID_SELECT_VALUE = "__mark_paid__";
 
 const PIPELINE_SELECT_OPTIONS: { value: LeadStatus | typeof LEAD_MARK_PAID_SELECT_VALUE; label: string }[] = [
@@ -16,11 +16,12 @@ const PIPELINE_SELECT_OPTIONS: { value: LeadStatus | typeof LEAD_MARK_PAID_SELEC
   { value: LEAD_MARK_PAID_SELECT_VALUE, label: "Paid" },
 ];
 
-const COMPLETED_SELECT_OPTIONS: { value: LeadStatus; label: string }[] = [
+const COMPLETED_SELECT_OPTIONS: { value: LeadStatus | typeof LEAD_MARK_PAID_SELECT_VALUE; label: string }[] = [
   { value: "completed", label: "Completed" },
   { value: "pending", label: "Pending" },
   { value: "urgent", label: "Urgent" },
   { value: "not_paid", label: "Not Paid" },
+  { value: LEAD_MARK_PAID_SELECT_VALUE, label: "Paid" },
 ];
 
 export type LeadsSortableLeadRowProps = {

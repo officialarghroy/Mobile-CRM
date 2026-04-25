@@ -10,7 +10,8 @@ type SupabaseError = {
   message?: string;
 };
 
-const LEAD_STATUSES = new Set(["pending", "urgent", "not_paid", "completed"]);
+/** `paid` is stored for legacy DB CHECKs; list UI maps it to completed when reading. */
+const LEAD_STATUSES = new Set(["pending", "urgent", "not_paid", "completed", "paid"]);
 
 function parsePriorityOrder(raw: unknown): number {
   const n = Number(raw);
@@ -85,20 +86,26 @@ export async function markLeadAsRead(leadId: string): Promise<LeadPersistResult>
 
 export async function updateLeadStatus(leadId: string, status: string): Promise<LeadPersistResult> {
   const id = String(leadId ?? "").trim();
-  let s = String(status ?? "").trim().toLowerCase();
-  if (s === "paid") s = "completed";
+  const s = String(status ?? "").trim().toLowerCase();
   if (!id || !LEAD_STATUSES.has(s)) return { success: false };
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("leads")
       .update({ status: s })
       .eq("id", id)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
-      console.error("updateLeadStatus:", error.message);
+      const err = error as SupabaseError;
+      console.error("updateLeadStatus:", err.message, err.code ?? "");
+      return { success: false };
+    }
+    if (!data) {
+      console.error("updateLeadStatus: no row updated (wrong id, RLS, or soft-deleted)", id);
       return { success: false };
     }
 
