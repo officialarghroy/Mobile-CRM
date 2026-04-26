@@ -12,6 +12,8 @@ export const LEAD_MARK_PAID_SELECT_VALUE = "__mark_paid__";
 const PIPELINE_SELECT_OPTIONS: { value: LeadStatus | typeof LEAD_MARK_PAID_SELECT_VALUE; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "urgent", label: "Urgent" },
+  { value: "order_parts", label: "Order parts" },
+  { value: "parts_ordered", label: "Parts ordered" },
   { value: "not_paid", label: "Not Paid" },
   { value: LEAD_MARK_PAID_SELECT_VALUE, label: "Paid" },
 ];
@@ -20,6 +22,8 @@ const COMPLETED_SELECT_OPTIONS: { value: LeadStatus | typeof LEAD_MARK_PAID_SELE
   { value: "completed", label: "Completed" },
   { value: "pending", label: "Pending" },
   { value: "urgent", label: "Urgent" },
+  { value: "order_parts", label: "Order parts" },
+  { value: "parts_ordered", label: "Parts ordered" },
   { value: "not_paid", label: "Not Paid" },
   { value: LEAD_MARK_PAID_SELECT_VALUE, label: "Paid" },
 ];

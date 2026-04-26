@@ -34,7 +34,16 @@ type LatestLeadActivity = {
 function normalizeLeadStatus(raw: unknown): NonNullable<LeadCardData["status"]> {
   const s = String(raw ?? "pending").trim().toLowerCase();
   if (s === "paid") return "completed";
-  if (s === "urgent" || s === "not_paid" || s === "pending" || s === "completed") return s;
+  if (
+    s === "urgent" ||
+    s === "not_paid" ||
+    s === "pending" ||
+    s === "completed" ||
+    s === "order_parts" ||
+    s === "parts_ordered"
+  ) {
+    return s;
+  }
   return "pending";
 }
 

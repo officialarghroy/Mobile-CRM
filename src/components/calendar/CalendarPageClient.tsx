@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AddEventInline } from "@/components/calendar/AddEventInline";
@@ -166,7 +166,7 @@ function listRowLeftBorderClass(event: ListEvent): string {
   return "border-l-[#94a3b8]";
 }
 
-function CalendarEventListRow({ event }: { event: ListEvent }) {
+const CalendarEventListRow = memo(function CalendarEventListRow({ event }: { event: ListEvent }) {
   return (
     <div
       className={`flex items-stretch gap-0 border-b border-[var(--border)] border-l-[3px] bg-[var(--surface)] last:border-b-0 ${listRowLeftBorderClass(event)}`}
@@ -197,7 +197,7 @@ function CalendarEventListRow({ event }: { event: ListEvent }) {
       />
     </div>
   );
-}
+});
 
 const emptyListCardClass =
   "rounded-xl border border-[var(--border)] bg-[var(--surface)] px-5 py-8 text-center text-sm text-[var(--text-secondary)] shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]";
@@ -218,12 +218,33 @@ export function CalendarPageClient({
     [teamMembers],
   );
 
-  const view = useMemo(() => viewFromSearchParams(searchParams), [searchParams]);
-  const listShow = useMemo(
+  const urlView = useMemo(() => viewFromSearchParams(searchParams), [searchParams]);
+  const urlListShow = useMemo(
     () => listShowFromSearchParams(searchParams, memberIdSet, viewerUserId),
     [searchParams, memberIdSet, viewerUserId],
   );
-  const [isNavPending, startNavTransition] = useTransition();
+
+  /** Pills and list filter update immediately; URL catches up on `router.replace`. Cleared when `searchParams` changes. */
+  const [uiView, setUiView] = useState<"list" | "calendar" | null>(null);
+  const [uiListShow, setUiListShow] = useState<ListShowFilter | null>(null);
+
+  const searchParamsKey = searchParams.toString();
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setUiView(null);
+        setUiListShow(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParamsKey]);
+
+  const view = uiView ?? urlView;
+  const listShow = uiListShow ?? urlListShow;
+
   const [newEventOpenedAt, setNewEventOpenedAt] = useState<number | null>(null);
   const [stagedEvents, setStagedEvents] = useState<CalendarEventRow[]>([]);
   const [calendarFocusStart, setCalendarFocusStart] = useState<{
@@ -294,53 +315,51 @@ export function CalendarPageClient({
 
   const setCalendarView = useCallback(
     (next: "list" | "calendar") => {
-      startNavTransition(() => {
-        replaceQueryParams((params) => {
-          if (next === "calendar") {
-            params.set("view", "calendar");
-          } else {
-            params.delete("view");
-          }
-        });
+      setUiView(next);
+      replaceQueryParams((params) => {
+        if (next === "calendar") {
+          params.set("view", "calendar");
+        } else {
+          params.delete("view");
+        }
       });
     },
-    [replaceQueryParams, startNavTransition],
+    [replaceQueryParams],
   );
 
   const setListShowAndUrl = useCallback(
     (next: ListShowFilter) => {
-      startNavTransition(() => {
-        replaceQueryParams((params) => {
-          params.delete("cal");
-          params.delete("u");
-          if (next.type === "member") {
-            params.set("u", next.userId);
-          }
-        });
+      setUiListShow(next);
+      replaceQueryParams((params) => {
+        params.delete("cal");
+        params.delete("u");
+        if (next.type === "member") {
+          params.set("u", next.userId);
+        }
       });
     },
-    [replaceQueryParams, startNavTransition],
+    [replaceQueryParams],
   );
 
   /** One navigation for filter + Events vs Calendar so two replaces cannot drop `?u=` or `view`. */
   const setListShowViewAndUrl = useCallback(
     (next: ListShowFilter, nextView: "list" | "calendar") => {
-      startNavTransition(() => {
-        replaceQueryParams((params) => {
-          params.delete("cal");
-          params.delete("u");
-          if (next.type === "member") {
-            params.set("u", next.userId);
-          }
-          if (nextView === "calendar") {
-            params.set("view", "calendar");
-          } else {
-            params.delete("view");
-          }
-        });
+      setUiListShow(next);
+      setUiView(nextView);
+      replaceQueryParams((params) => {
+        params.delete("cal");
+        params.delete("u");
+        if (next.type === "member") {
+          params.set("u", next.userId);
+        }
+        if (nextView === "calendar") {
+          params.set("view", "calendar");
+        } else {
+          params.delete("view");
+        }
       });
     },
-    [replaceQueryParams, startNavTransition],
+    [replaceQueryParams],
   );
 
   const clearCalendarFocus = useCallback(() => setCalendarFocusStart(null), []);
@@ -496,11 +515,7 @@ export function CalendarPageClient({
             </div>
           </div>
 
-          <div
-            className={`min-h-0 flex-1 flex flex-col transition-opacity duration-200 ease-out motion-reduce:transition-none ${
-              isNavPending ? "opacity-70" : "opacity-100"
-            }`}
-          >
+          <div className="flex min-h-0 flex-1 flex-col">
             {!displayListEvents.length ? (
               <div className={emptyListCardClass}>No events</div>
             ) : (

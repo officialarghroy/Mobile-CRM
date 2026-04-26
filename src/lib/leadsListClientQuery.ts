@@ -18,7 +18,7 @@ export type LeadSearchableRow = {
   address: string;
   update: string;
   type: "lead" | "client";
-  status?: "pending" | "urgent" | "not_paid" | "completed";
+  status?: "pending" | "urgent" | "not_paid" | "completed" | "order_parts" | "parts_ordered";
 };
 
 const TYPE_DISPLAY: Record<LeadSearchableRow["type"], string> = {
@@ -29,6 +29,8 @@ const TYPE_DISPLAY: Record<LeadSearchableRow["type"], string> = {
 const STATUS_OPTIONS: { value: NonNullable<LeadSearchableRow["status"]>; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "urgent", label: "Urgent" },
+  { value: "order_parts", label: "Order parts" },
+  { value: "parts_ordered", label: "Parts ordered" },
   { value: "not_paid", label: "Not Paid" },
   { value: "completed", label: "Completed" },
 ];

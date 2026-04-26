@@ -51,6 +51,8 @@ export function LeadsDragOverlayCard({ lead, statusDotClass, statusTitle, typeLa
 const STATUS_SNIPPET: Record<LeadStatus, string> = {
   pending: "Pending",
   urgent: "Urgent",
+  order_parts: "Order parts",
+  parts_ordered: "Parts ordered",
   not_paid: "Not paid",
   completed: "Completed",
 };

@@ -8,8 +8,14 @@ export type TeamMemberRow = {
   member_since: string;
 };
 
-/** Display names to drop from team listings (legacy test accounts). */
-const REMOVED_TEAM_MEMBER_DISPLAY_NAMES = new Set(["test user", "test user 2", "testuser2"]);
+/** Display names to drop from team listings (legacy test accounts and owners not shown in filters). */
+const REMOVED_TEAM_MEMBER_DISPLAY_NAMES = new Set([
+  "test user",
+  "test user 2",
+  "testuser2",
+  "michael huynh",
+  "arghroy",
+]);
 
 function isRemovedTeamMemberRow(row: TeamMemberRow): boolean {
   const key = row.display_name.trim().toLowerCase().replace(/\s+/g, " ");

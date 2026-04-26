@@ -11,7 +11,15 @@ type SupabaseError = {
 };
 
 /** `paid` is stored for legacy DB CHECKs; list UI maps it to completed when reading. */
-const LEAD_STATUSES = new Set(["pending", "urgent", "not_paid", "completed", "paid"]);
+const LEAD_STATUSES = new Set([
+  "pending",
+  "urgent",
+  "not_paid",
+  "completed",
+  "paid",
+  "order_parts",
+  "parts_ordered",
+]);
 
 function parsePriorityOrder(raw: unknown): number {
   const n = Number(raw);

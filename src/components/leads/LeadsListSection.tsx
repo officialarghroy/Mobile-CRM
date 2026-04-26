@@ -37,7 +37,7 @@ import type { LeadCardData, LeadStatus } from "./leadCardTypes";
 
 export type { LeadCardData, LeadStatus } from "./leadCardTypes";
 
-type LeadFilter = "all" | "lead" | "client" | "completed";
+type LeadFilter = "lead" | "client" | "invoice" | "completed";
 
 type LeadsListSectionProps = {
   leads: LeadCardData[];
@@ -79,8 +79,10 @@ function isCompletedLead(lead: LeadCardData): boolean {
 }
 
 function filterItemsForTab(items: LeadCardData[], filter: LeadFilter): LeadCardData[] {
-  if (filter === "all") return items;
   if (filter === "completed") return items.filter(isCompletedLead);
+  if (filter === "invoice") {
+    return items.filter((l) => (l.status ?? "pending") === "not_paid");
+  }
   if (filter === "lead") return items.filter((l) => l.type === "lead" && !isCompletedLead(l));
   if (filter === "client") return items.filter((l) => l.type === "client" && !isCompletedLead(l));
   return items;
@@ -89,6 +91,8 @@ function filterItemsForTab(items: LeadCardData[], filter: LeadFilter): LeadCardD
 const STATUS_TITLE: Record<LeadStatus, string> = {
   pending: "Pending",
   urgent: "Urgent",
+  order_parts: "Order parts",
+  parts_ordered: "Parts ordered",
   not_paid: "Not Paid",
   completed: "Completed",
 };
@@ -100,6 +104,10 @@ function getStatusDotClass(status: LeadStatus | undefined): string {
       return "bg-yellow-500";
     case "urgent":
       return "bg-red-500";
+    case "order_parts":
+      return "bg-amber-600";
+    case "parts_ordered":
+      return "bg-sky-600";
     case "completed":
       return "bg-emerald-600";
     case "not_paid":
@@ -110,7 +118,14 @@ function getStatusDotClass(status: LeadStatus | undefined): string {
 }
 
 function isLeadStatus(s: string): s is LeadStatus {
-  return s === "pending" || s === "urgent" || s === "not_paid" || s === "completed";
+  return (
+    s === "pending" ||
+    s === "urgent" ||
+    s === "not_paid" ||
+    s === "completed" ||
+    s === "order_parts" ||
+    s === "parts_ordered"
+  );
 }
 
 export function LeadsListSection({
@@ -119,7 +134,7 @@ export function LeadsListSection({
   viewerUserId,
   viewerEmail,
 }: LeadsListSectionProps) {
-  const [filter, setFilter] = useState<LeadFilter>("all");
+  const [filter, setFilter] = useState<LeadFilter>("lead");
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [items, setItems] = useState<LeadCardData[]>(() => sortLeadsForDisplay(leads));
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
@@ -287,27 +302,19 @@ export function LeadsListSection({
   const emptyMessage = (() => {
     if (!leads.length) return "No leads yet - add your first lead";
     if (filter === "completed") return "No completed leads";
+    if (filter === "invoice") return "No leads waiting on payment";
     return "No entries match this filter";
   })();
 
   return (
     <section className="flex flex-col space-y-4" aria-label="Leads list">
-      <div className="flex w-full min-w-0 items-center gap-2">
-        <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex w-max min-w-0 max-w-full flex-nowrap gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+      <div className="flex w-full min-w-0 items-start gap-2">
+        <div className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 shadow-[var(--shadow-card)] transition-shadow duration-150 hover:shadow-[var(--shadow-elevated)]">
+          <div className="flex min-h-[2.5rem] flex-wrap content-center gap-0.5" role="tablist" aria-label="Filter leads">
             <button
               type="button"
-              onClick={() => setFilter("all")}
-              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                filter === "all"
-                  ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
+              role="tab"
+              aria-selected={filter === "lead"}
               onClick={() => setFilter("lead")}
               className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 filter === "lead"
@@ -319,6 +326,8 @@ export function LeadsListSection({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={filter === "client"}
               onClick={() => setFilter("client")}
               className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 filter === "client"
@@ -330,6 +339,21 @@ export function LeadsListSection({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={filter === "invoice"}
+              onClick={() => setFilter("invoice")}
+              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                filter === "invoice"
+                  ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              }`}
+            >
+              Invoice
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === "completed"}
               onClick={() => setFilter("completed")}
               className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 filter === "completed"
