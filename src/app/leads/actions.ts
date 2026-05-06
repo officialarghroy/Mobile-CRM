@@ -65,7 +65,9 @@ async function nextPriorityOrderForNewLead(
   return max + 1;
 }
 
-export type LeadPersistResult = { success: true } | { success: false };
+export type LeadPersistResult =
+  | { success: true }
+  | { success: false; userMessage?: string };
 
 export async function markLeadAsRead(leadId: string): Promise<LeadPersistResult> {
   const id = String(leadId ?? "").trim();
@@ -99,21 +101,59 @@ export async function updateLeadStatus(leadId: string, status: string): Promise<
 
   try {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
+
+    let rows: { id: string }[] | null = null;
+    let error: SupabaseError | null = null;
+
+    const attempt = await supabase
       .from("leads")
       .update({ status: s })
       .eq("id", id)
       .is("deleted_at", null)
-      .select("id")
-      .maybeSingle();
+      .select("id");
+
+    rows = (attempt.data as { id: string }[] | null) ?? null;
+    error = attempt.error as SupabaseError | null;
+
+    if (error && isMissingDeletedAtColumnError(error)) {
+      const retry = await supabase.from("leads").update({ status: s }).eq("id", id).select("id");
+      rows = (retry.data as { id: string }[] | null) ?? null;
+      error = retry.error as SupabaseError | null;
+    }
 
     if (error) {
       const err = error as SupabaseError;
-      console.error("updateLeadStatus:", err.message, err.code ?? "");
+      const code = String(err.code ?? "");
+      const msg = String(err.message ?? "").toLowerCase();
+      console.error("updateLeadStatus:", err.message, code);
+      const checkBlocked =
+        code === "23514" ||
+        msg.includes("check constraint") ||
+        (msg.includes("violates") && msg.includes("constraint") && msg.includes("status"));
+      const enumBlocked =
+        msg.includes("invalid input value for enum") ||
+        (msg.includes("enum") && msg.includes("status"));
+      if ((checkBlocked || enumBlocked) && (s === "order_parts" || s === "parts_ordered")) {
+        return {
+          success: false,
+          userMessage: enumBlocked
+            ? "The leads.status column is a PostgreSQL enum. Add the new values with ALTER TYPE ... ADD VALUE (before using them in CHECKs), or change the column to text and use supabase/migrations/20260426120000_leads_status_order_parts.sql."
+            : "Your database does not allow Order parts or Parts ordered yet. In Supabase, open SQL Editor and run supabase/migrations/20260426120000_leads_status_order_parts.sql. If it still fails, run: SELECT conname FROM pg_constraint WHERE conrelid = 'public.leads'::regclass AND contype = 'c'; and drop any other status CHECK still listed.",
+        };
+      }
       return { success: false };
     }
-    if (!data) {
+
+    const updated = rows ?? [];
+    if (updated.length === 0) {
       console.error("updateLeadStatus: no row updated (wrong id, RLS, or soft-deleted)", id);
+      if (s === "order_parts" || s === "parts_ordered") {
+        return {
+          success: false,
+          userMessage:
+            "Status did not save (no row updated). Check Supabase RLS policies for leads UPDATE, or that the lead is not soft-deleted. Also confirm supabase/migrations/20260426120000_leads_status_order_parts.sql ran successfully.",
+        };
+      }
       return { success: false };
     }
 

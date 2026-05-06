@@ -142,11 +142,7 @@ export function LeadsSortableLeadRow({
 
       <div className="flex items-center justify-between gap-2 border-t border-[var(--border)]/50 pt-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div
-            className="min-w-0 shrink"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
+          <div className="min-w-0 shrink" onClick={(e) => e.stopPropagation()}>
             <label htmlFor={`lead-status-${lead.id}`} className="sr-only">
               Status
             </label>
@@ -158,7 +154,7 @@ export function LeadsSortableLeadRow({
                   onStatusSelect(lead.id, e.target.value);
                 }}
                 onClick={(e) => e.stopPropagation()}
-                className="min-w-0 max-w-full w-auto cursor-pointer appearance-none rounded-full border border-[var(--border)] bg-[var(--surface-muted)] py-1 pl-2 pr-5 text-xs text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] [field-sizing:content]"
+                className="min-w-0 max-w-full w-auto touch-manipulation cursor-pointer appearance-none rounded-full border border-[var(--border)] bg-[var(--surface-muted)] py-1 pl-2 pr-5 text-xs text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] [field-sizing:content]"
               >
                 {selectOptions.map((o) => (
                   <option key={o.value} value={o.value}>

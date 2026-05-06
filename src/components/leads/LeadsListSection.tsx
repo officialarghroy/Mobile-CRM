@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   markLeadAsRead,
   updateLeadPriority,
@@ -140,6 +140,8 @@ export function LeadsListSection({
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  /** Keeps chosen status visible while RSC `leads` refreshes during `updateLeadStatus` (avoids wiping optimistic UI). */
+  const pendingStatusByLeadIdRef = useRef(new Map<string, LeadStatus>());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -149,7 +151,29 @@ export function LeadsListSection({
   );
 
   useEffect(() => {
-    setItems(sortLeadsForDisplay(leads));
+    const pending = pendingStatusByLeadIdRef.current;
+    for (const key of [...pending.keys()]) {
+      if (!leads.some((l) => l.id === key)) {
+        pending.delete(key);
+      }
+    }
+    for (const [leadId, st] of [...pending.entries()]) {
+      const serverRow = leads.find((l) => l.id === leadId);
+      if (serverRow && (serverRow.status ?? "pending") === st) {
+        pending.delete(leadId);
+      }
+    }
+
+    setItems(() => {
+      const sorted = sortLeadsForDisplay(leads);
+      return sorted.map((row) => {
+        const p = pending.get(row.id);
+        if (p !== undefined) {
+          return { ...row, status: p };
+        }
+        return row;
+      });
+    });
   }, [leads]);
 
   useEffect(() => {
@@ -170,15 +194,23 @@ export function LeadsListSection({
   }, []);
 
   const changeLeadStatus = useCallback((leadId: string, newStatus: LeadStatus) => {
+    pendingStatusByLeadIdRef.current.set(leadId, newStatus);
     setItems((prev) => {
       const snapshot = prev;
       const next = prev.map((row) => (row.id === leadId ? { ...row, status: newStatus } : row));
       queueMicrotask(() => {
         void updateLeadStatus(leadId, newStatus)
           .then((r) => {
-            if (!r.success) setItems(snapshot);
+            if (!r.success) {
+              pendingStatusByLeadIdRef.current.delete(leadId);
+              setItems(snapshot);
+              if (r.userMessage) {
+                alert(r.userMessage);
+              }
+            }
           })
           .catch(() => {
+            pendingStatusByLeadIdRef.current.delete(leadId);
             setItems(snapshot);
           });
       });
@@ -188,6 +220,7 @@ export function LeadsListSection({
 
   /** Paid is stored as `paid` in Postgres (legacy CHECKs often allow paid but not completed). UI shows completed via normalizeLeadStatus. */
   const markLeadPaid = useCallback((leadId: string) => {
+    pendingStatusByLeadIdRef.current.set(leadId, "completed");
     setItems((prev) => {
       const snapshot = prev;
       const next: LeadCardData[] = prev.map((row) =>
@@ -196,9 +229,13 @@ export function LeadsListSection({
       queueMicrotask(() => {
         void updateLeadStatus(leadId, "paid")
           .then((r) => {
-            if (!r.success) setItems(snapshot);
+            if (!r.success) {
+              pendingStatusByLeadIdRef.current.delete(leadId);
+              setItems(snapshot);
+            }
           })
           .catch(() => {
+            pendingStatusByLeadIdRef.current.delete(leadId);
             setItems(snapshot);
           });
       });
