@@ -34,8 +34,7 @@ export async function createLeadUpdate(leadId: string, formData: FormData) {
     data: { user: actionUser },
   } = await supabase.auth.getUser();
   const email = actionUser?.email;
-  const contentRaw = String(formData.get("content") ?? "");
-  const content = contentRaw.trim();
+  const content = String(formData.get("content") ?? "");
   if (!leadId || !email) return;
 
   try {
@@ -54,7 +53,7 @@ export async function createLeadUpdate(leadId: string, formData: FormData) {
       .filter((entry): entry is File => entry instanceof File && entry.size > 0)
       .slice(0, 5);
 
-    if (!content && imageFiles.length === 0) return;
+    if (!content.trim() && imageFiles.length === 0) return;
 
     const imageUrls: string[] = [];
     for (let i = 0; i < imageFiles.length; i++) {

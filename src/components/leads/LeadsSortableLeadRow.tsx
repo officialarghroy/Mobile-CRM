@@ -135,7 +135,7 @@ export function LeadsSortableLeadRow({
         {lead.address ? (
           <p className="text-xs text-[var(--text-secondary)] [overflow-wrap:anywhere]">{lead.address}</p>
         ) : null}
-        <p className="text-sm leading-snug text-[var(--text-secondary)] line-clamp-2 [overflow-wrap:anywhere]">
+        <p className="line-clamp-2 whitespace-pre-line break-words text-sm leading-snug text-[var(--text-secondary)]">
           {lead.update}
         </p>
       </Link>

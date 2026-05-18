@@ -21,6 +21,10 @@ function fileKeyForDedupe(f: File): string {
   return `${f.name}-${f.size}-${f.lastModified}`;
 }
 
+/** Shared box model so saved notes wrap at the same points as the textarea above. */
+const activityNoteTextClass =
+  "box-border w-full px-4 text-sm leading-normal text-[var(--text-primary)]";
+
 export type UpdateCardData = {
   id: string;
   content: string;
@@ -192,9 +196,9 @@ export function LeadUpdatesSection({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const content = draft.trim();
+    const content = draft;
     const fileCount = selectedFiles.length;
-    if (!content && fileCount === 0) return;
+    if (!content.trim() && fileCount === 0) return;
 
     setDraft("");
 
@@ -202,7 +206,7 @@ export function LeadUpdatesSection({
     const nowIso = new Date().toISOString();
     const optimisticUpdate: UpdateCardData = {
       id: optimisticId,
-      content: content || (fileCount ? "Photo attachment" : ""),
+      content: content.trim() ? content : fileCount ? "Photo attachment" : "",
       createdAt: nowIso,
       author: viewerEmail,
       image_urls: null,
@@ -257,7 +261,7 @@ export function LeadUpdatesSection({
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="What happened? (e.g. visited store, spoke to client...)"
                 rows={4}
-                className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]"
+                className={`${activityNoteTextClass} resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] py-3 outline-none transition-colors duration-200 placeholder:text-[var(--text-secondary)]/82 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa2e]`}
               />
               <input
                 ref={fileInputRef}
@@ -354,39 +358,35 @@ export function LeadUpdatesSection({
             {updates.map((update, index) => (
               <div
                 key={update.id}
-                className={`border-b border-[var(--border)] border-l-[3px] border-l-[#cbd5e1] px-4 py-4 last:border-b-0 ${
+                className={`border-b border-[var(--border)] border-l-[3px] border-l-[#cbd5e1] px-5 py-4 last:border-b-0 ${
                   index === 0
                     ? "bg-[var(--surface-muted)]"
                     : "bg-[var(--surface)]"
                 }`}
               >
-                <div className="flex flex-col gap-2.5 pl-1">
-                  <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <p
-                      className={`min-w-0 flex-1 break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere] ${
-                        index === 0
-                          ? "text-[var(--text-primary)]"
-                          : "text-[var(--text-primary)]/95"
-                      } ${!update.content.trim() && update.image_urls?.length ? "font-normal italic text-[var(--text-secondary)]" : ""}`}
-                    >
-                      {update.content.trim()
-                        ? update.content
-                        : update.image_urls?.length
-                          ? "Photo attachment"
-                          : update.content}
-                    </p>
-                    <p
-                      className="crm-meta shrink-0 [overflow-wrap:anywhere] sm:max-w-[min(100%,14rem)] sm:text-right"
-                      title={`${formatLeadUpdateRelativeTime(update.createdAt)} · ${formatInPST(update.createdAt)}`}
-                    >
-                      <span className="text-[var(--text-secondary)]">
-                        {formatLeadUpdateRelativeTime(update.createdAt)}
-                      </span>
-                      <span className="mx-1.5 text-[var(--text-tertiary)]/50" aria-hidden>
-                        ·
-                      </span>
-                      <span className="text-[var(--text-tertiary)]">{formatInPST(update.createdAt)}</span>
-                    </p>
+                <div className="flex flex-col gap-2.5">
+                  <p
+                    className="crm-meta text-right [overflow-wrap:anywhere]"
+                    title={`${formatLeadUpdateRelativeTime(update.createdAt)} · ${formatInPST(update.createdAt)}`}
+                  >
+                    <span className="text-[var(--text-secondary)]">
+                      {formatLeadUpdateRelativeTime(update.createdAt)}
+                    </span>
+                    <span className="mx-1.5 text-[var(--text-tertiary)]/50" aria-hidden>
+                      ·
+                    </span>
+                    <span className="text-[var(--text-tertiary)]">{formatInPST(update.createdAt)}</span>
+                  </p>
+                  <div
+                    className={`${activityNoteTextClass} whitespace-pre-wrap break-words ${
+                      index === 0 ? "" : "text-[var(--text-primary)]/95"
+                    } ${!update.content.trim() && update.image_urls?.length ? "italic text-[var(--text-secondary)]" : ""}`}
+                  >
+                    {update.content.trim()
+                      ? update.content
+                      : update.image_urls?.length
+                        ? "Photo attachment"
+                        : update.content}
                   </div>
                   {update.image_urls?.length ? (
                     <div className="min-w-0 rounded-xl border border-[var(--border)]/70 bg-[var(--surface-muted)]/50 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
