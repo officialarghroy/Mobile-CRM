@@ -18,3 +18,10 @@ ALTER TABLE public.leads
   ADD COLUMN IF NOT EXISTS equipment_model text NULL,
   ADD COLUMN IF NOT EXISTS brand_model text NULL,
   ADD COLUMN IF NOT EXISTS issue_description text NULL;
+
+-- Vapi AI / Make.com webhook fields (also in migrations/20260525120000_vapi_leads_webhook_fields.sql)
+ALTER TABLE public.leads
+  ADD COLUMN IF NOT EXISTS source text NULL,
+  ADD COLUMN IF NOT EXISTS contact_reason text NULL,
+  ADD COLUMN IF NOT EXISTS preferred_time text NULL,
+  ADD COLUMN IF NOT EXISTS other_inquiries text NULL;
