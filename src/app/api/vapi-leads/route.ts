@@ -50,8 +50,21 @@ export async function POST(request: Request) {
   const durationMs = Date.now() - startedAt;
 
   if (!result.ok) {
-    logVapiLeadsError("Database operation failed", undefined, { durationMs });
-    return jsonResponse({ success: false, message: result.message }, 500);
+    logVapiLeadsError("Database operation failed", undefined, {
+      durationMs,
+      operation: result.operation,
+      debug: result.debug,
+      debugDetails: result.debugDetails,
+    });
+    return jsonResponse(
+      {
+        success: false,
+        message: result.message,
+        ...(result.debug ? { debug: result.debug } : {}),
+        ...(result.debugDetails ? { debugDetails: result.debugDetails } : {}),
+      },
+      500,
+    );
   }
 
   const message =

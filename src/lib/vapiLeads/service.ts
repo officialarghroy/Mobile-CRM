@@ -1,8 +1,14 @@
 import { createSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { isMissingDeletedAtColumnError } from "@/lib/leadsSoftDeleteSupport";
-import { logVapiLeadsError } from "@/lib/vapiLeads/logger";
+import {
+  analyzeSupabaseDbError,
+  buildDebugPayload,
+  isVapiLeadsDebugEnabled,
+  type AnalyzedVapiDbError,
+} from "@/lib/vapiLeads/dbError";
+import { logVapiLeadsDbOperation, logVapiLeadsError } from "@/lib/vapiLeads/logger";
 import { normalizePhoneDigits } from "@/lib/vapiLeads/sanitize";
-import type { SanitizedVapiLead } from "@/lib/vapiLeads/types";
+import type { SanitizedVapiLead, VapiLeadApiErrorDebug } from "@/lib/vapiLeads/types";
 
 const VAPI_SOURCE = "vapi_ai";
 const VAPI_STATUS = "new";
@@ -23,6 +29,23 @@ type SupabaseError = {
 function parsePriorityOrder(raw: unknown): number {
   const n = Number(raw);
   return Number.isFinite(n) ? n : 0;
+}
+
+function dbFailure(
+  analyzed: AnalyzedVapiDbError,
+  operation: "insert" | "update" | "select_duplicate",
+): Extract<UpsertVapiLeadResult, { ok: false }> {
+  const debugDetails: VapiLeadApiErrorDebug | undefined = isVapiLeadsDebugEnabled()
+    ? buildDebugPayload(analyzed)
+    : undefined;
+
+  return {
+    ok: false,
+    message: "Database error",
+    debug: isVapiLeadsDebugEnabled() ? analyzed.message : undefined,
+    debugDetails,
+    operation,
+  };
 }
 
 async function nextPriorityOrderForNewLead(
@@ -55,7 +78,8 @@ async function nextPriorityOrderForNewLead(
       (error as SupabaseError).code === "42703" ||
       (msg.includes("does not exist") && msg.includes("priority_order"));
     if (missingPriority) return undefined;
-    logVapiLeadsError("nextPriorityOrderForNewLead failed", error);
+    const analyzed = analyzeSupabaseDbError(error);
+    logVapiLeadsDbOperation("select_duplicate", { error, analyzed });
     return undefined;
   }
 
@@ -112,6 +136,8 @@ async function findDuplicateLead(
   }
 
   if (error) {
+    const analyzed = analyzeSupabaseDbError(error);
+    logVapiLeadsDbOperation("select_duplicate", { error, analyzed });
     throw error;
   }
 
@@ -121,10 +147,33 @@ async function findDuplicateLead(
 
 export type UpsertVapiLeadResult =
   | { ok: true; action: "created" | "updated"; leadId: string }
-  | { ok: false; message: string };
+  | {
+      ok: false;
+      message: string;
+      debug?: string;
+      debugDetails?: VapiLeadApiErrorDebug;
+      operation?: "insert" | "update" | "select_duplicate";
+    };
 
 export async function upsertVapiLead(data: SanitizedVapiLead): Promise<UpsertVapiLeadResult> {
-  const supabase = createSupabaseAdmin();
+  let supabase: ReturnType<typeof createSupabaseAdmin>;
+  try {
+    supabase = createSupabaseAdmin();
+  } catch (error) {
+    const analyzed = analyzeSupabaseDbError(error);
+    logVapiLeadsError("Supabase admin client init failed", error, {
+      likelyCause: analyzed.likelyCause,
+      category: analyzed.category,
+      failedColumns: analyzed.failedColumns,
+    });
+    return {
+      ok: false,
+      message: "Database error",
+      debug: isVapiLeadsDebugEnabled() ? analyzed.message : undefined,
+      debugDetails: isVapiLeadsDebugEnabled() ? buildDebugPayload(analyzed) : undefined,
+    };
+  }
+
   const phoneDigits = normalizePhoneDigits(data.phone_number);
 
   try {
@@ -137,16 +186,29 @@ export async function upsertVapiLead(data: SanitizedVapiLead): Promise<UpsertVap
         delete updateRow.status;
       }
 
+      logVapiLeadsDbOperation("update", { payload: updateRow, leadId: existing.id });
+
       const { error } = await supabase.from("leads").update(updateRow).eq("id", existing.id);
       if (error) {
-        logVapiLeadsError("Failed to update duplicate vapi lead", error, { leadId: existing.id });
-        return { ok: false, message: "Database error" };
+        const analyzed = analyzeSupabaseDbError(error);
+        logVapiLeadsDbOperation("update", {
+          payload: updateRow,
+          leadId: existing.id,
+          error,
+          analyzed,
+        });
+        return dbFailure(analyzed, "update");
       }
+
+      logVapiLeadsDbOperation("update", { leadId: existing.id });
       return { ok: true, action: "updated", leadId: existing.id };
     }
 
     const priority_order = await nextPriorityOrderForNewLead(supabase);
     const insertRow = buildLeadRow(data, priority_order);
+
+    logVapiLeadsDbOperation("insert", { payload: insertRow });
+
     const { data: inserted, error } = await supabase
       .from("leads")
       .insert(insertRow)
@@ -154,13 +216,21 @@ export async function upsertVapiLead(data: SanitizedVapiLead): Promise<UpsertVap
       .single();
 
     if (error) {
-      logVapiLeadsError("Failed to insert vapi lead", error);
-      return { ok: false, message: "Database error" };
+      const analyzed = analyzeSupabaseDbError(error);
+      logVapiLeadsDbOperation("insert", { payload: insertRow, error, analyzed });
+      return dbFailure(analyzed, "insert");
     }
 
+    logVapiLeadsDbOperation("insert", { leadId: String(inserted.id) });
     return { ok: true, action: "created", leadId: String(inserted.id) };
   } catch (error) {
-    logVapiLeadsError("upsertVapiLead unexpected error", error);
-    return { ok: false, message: "Database error" };
+    const analyzed = analyzeSupabaseDbError(error);
+    logVapiLeadsDbOperation("select_duplicate", { error, analyzed });
+    logVapiLeadsError("upsertVapiLead unexpected error", error, {
+      category: analyzed.category,
+      failedColumns: analyzed.failedColumns,
+      likelyCause: analyzed.likelyCause,
+    });
+    return dbFailure(analyzed, "select_duplicate");
   }
 }

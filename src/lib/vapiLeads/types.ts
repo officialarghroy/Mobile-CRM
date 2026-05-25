@@ -29,9 +29,22 @@ export type VapiLeadApiSuccess = {
   action?: "created" | "updated";
 };
 
+export type VapiLeadApiErrorDebug = {
+  message: string;
+  code: string | null;
+  category: string;
+  failedColumns: string[];
+  likelyCause: string;
+  details: string | null;
+  hint: string | null;
+};
+
 export type VapiLeadApiError = {
   success: false;
   message: string;
+  /** Present when NODE_ENV !== production or VAPI_LEADS_DEBUG=true */
+  debug?: string;
+  debugDetails?: VapiLeadApiErrorDebug;
 };
 
 export type VapiLeadApiResponse = VapiLeadApiSuccess | VapiLeadApiError;
