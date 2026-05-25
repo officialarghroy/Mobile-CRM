@@ -2,10 +2,23 @@ import { NextResponse } from "next/server";
 import { verifyVapiLeadsAuth } from "@/lib/vapiLeads/auth";
 import { logVapiLeadsError, logVapiLeadsInfo } from "@/lib/vapiLeads/logger";
 import { upsertVapiLead } from "@/lib/vapiLeads/service";
-import type { VapiLeadApiResponse } from "@/lib/vapiLeads/types";
+import {
+  VAPI_LEADS_API_BUILD,
+  type VapiLeadApiError,
+  type VapiLeadApiMeta,
+  type VapiLeadApiResponse,
+} from "@/lib/vapiLeads/types";
 import { isRecord, validateAndSanitize } from "@/lib/vapiLeads/validate";
 
 export const runtime = "nodejs";
+
+function apiMeta(): VapiLeadApiMeta {
+  return {
+    debug_test: "deployment working",
+    api_build: VAPI_LEADS_API_BUILD,
+    node_env: process.env.NODE_ENV ?? "unknown",
+  };
+}
 
 function jsonResponse(body: VapiLeadApiResponse, status: number) {
   return NextResponse.json(body, {
@@ -13,8 +26,22 @@ function jsonResponse(body: VapiLeadApiResponse, status: number) {
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
+      "X-Vapi-Leads-Build": VAPI_LEADS_API_BUILD,
     },
   });
+}
+
+function databaseErrorResponse(
+  result: Extract<Awaited<ReturnType<typeof upsertVapiLead>>, { ok: false }>,
+): VapiLeadApiError {
+  return {
+    ...apiMeta(),
+    success: false,
+    message: result.message,
+    debug: result.debug,
+    debugDetails: result.debugDetails,
+    operation: result.operation,
+  };
 }
 
 export async function POST(request: Request) {
@@ -23,7 +50,24 @@ export async function POST(request: Request) {
   const auth = verifyVapiLeadsAuth(request);
   if (!auth.ok) {
     logVapiLeadsError("Unauthorized webhook request");
-    return jsonResponse({ success: false, message: auth.message }, 401);
+    return jsonResponse(
+      {
+        ...apiMeta(),
+        success: false,
+        message: auth.message,
+        debug: "Unauthorized",
+        debugDetails: {
+          message: "Unauthorized",
+          code: null,
+          category: "permission",
+          failedColumns: [],
+          likelyCause: "Missing or invalid Authorization Bearer token.",
+          details: null,
+          hint: null,
+        },
+      },
+      401,
+    );
   }
 
   let body: unknown;
@@ -31,10 +75,29 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch (error) {
     logVapiLeadsError("Invalid JSON body", error);
-    return jsonResponse({ success: false, message: "Invalid JSON" }, 400);
+    return jsonResponse(
+      {
+        ...apiMeta(),
+        success: false,
+        message: "Invalid JSON",
+        debug: error instanceof Error ? error.message : "Invalid JSON",
+        debugDetails: {
+          message: "Invalid JSON",
+          code: null,
+          category: "unknown",
+          failedColumns: [],
+          likelyCause: "Request body must be valid JSON.",
+          details: null,
+          hint: null,
+        },
+      },
+      400,
+    );
   }
 
   logVapiLeadsInfo("Incoming webhook", {
+    api_build: VAPI_LEADS_API_BUILD,
+    node_env: process.env.NODE_ENV,
     hasContactReason: Boolean(isRecord(body) && body.contact_reason),
     hasName: Boolean(isRecord(body) && body.name),
     hasPhone: Boolean(isRecord(body) && body.phone_number),
@@ -43,7 +106,24 @@ export async function POST(request: Request) {
   const validation = validateAndSanitize(body);
   if (!validation.ok) {
     logVapiLeadsError("Validation failed", undefined, { missing: validation.missing });
-    return jsonResponse({ success: false, message: "Validation failed" }, 400);
+    return jsonResponse(
+      {
+        ...apiMeta(),
+        success: false,
+        message: "Validation failed",
+        debug: `Missing required fields: ${validation.missing.join(", ")}`,
+        debugDetails: {
+          message: "Validation failed",
+          code: null,
+          category: "unknown",
+          failedColumns: validation.missing,
+          likelyCause: "Provide name, phone_number, and contact_reason.",
+          details: null,
+          hint: null,
+        },
+      },
+      400,
+    );
   }
 
   const result = await upsertVapiLead(validation.data);
@@ -55,16 +135,9 @@ export async function POST(request: Request) {
       operation: result.operation,
       debug: result.debug,
       debugDetails: result.debugDetails,
+      api_build: VAPI_LEADS_API_BUILD,
     });
-    return jsonResponse(
-      {
-        success: false,
-        message: result.message,
-        ...(result.debug ? { debug: result.debug } : {}),
-        ...(result.debugDetails ? { debugDetails: result.debugDetails } : {}),
-      },
-      500,
-    );
+    return jsonResponse(databaseErrorResponse(result), 500);
   }
 
   const message =
@@ -74,10 +147,12 @@ export async function POST(request: Request) {
     action: result.action,
     leadId: result.leadId,
     durationMs,
+    api_build: VAPI_LEADS_API_BUILD,
   });
 
   return jsonResponse(
     {
+      ...apiMeta(),
       success: true,
       message,
       leadId: result.leadId,
@@ -87,6 +162,14 @@ export async function POST(request: Request) {
   );
 }
 
+/** Health check: confirms deploy version without creating a lead. */
 export async function GET() {
-  return jsonResponse({ success: false, message: "Method not allowed" }, 405);
+  return jsonResponse(
+    {
+      ...apiMeta(),
+      success: true,
+      message: "Vapi leads API is reachable",
+    },
+    200,
+  );
 }

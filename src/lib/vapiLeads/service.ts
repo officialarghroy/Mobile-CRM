@@ -3,7 +3,6 @@ import { isMissingDeletedAtColumnError } from "@/lib/leadsSoftDeleteSupport";
 import {
   analyzeSupabaseDbError,
   buildDebugPayload,
-  isVapiLeadsDebugEnabled,
   type AnalyzedVapiDbError,
 } from "@/lib/vapiLeads/dbError";
 import { logVapiLeadsDbOperation, logVapiLeadsError } from "@/lib/vapiLeads/logger";
@@ -35,15 +34,11 @@ function dbFailure(
   analyzed: AnalyzedVapiDbError,
   operation: "insert" | "update" | "select_duplicate",
 ): Extract<UpsertVapiLeadResult, { ok: false }> {
-  const debugDetails: VapiLeadApiErrorDebug | undefined = isVapiLeadsDebugEnabled()
-    ? buildDebugPayload(analyzed)
-    : undefined;
-
   return {
     ok: false,
     message: "Database error",
-    debug: isVapiLeadsDebugEnabled() ? analyzed.message : undefined,
-    debugDetails,
+    debug: analyzed.message,
+    debugDetails: buildDebugPayload(analyzed),
     operation,
   };
 }
@@ -150,8 +145,8 @@ export type UpsertVapiLeadResult =
   | {
       ok: false;
       message: string;
-      debug?: string;
-      debugDetails?: VapiLeadApiErrorDebug;
+      debug: string;
+      debugDetails: VapiLeadApiErrorDebug;
       operation?: "insert" | "update" | "select_duplicate";
     };
 
@@ -166,12 +161,7 @@ export async function upsertVapiLead(data: SanitizedVapiLead): Promise<UpsertVap
       category: analyzed.category,
       failedColumns: analyzed.failedColumns,
     });
-    return {
-      ok: false,
-      message: "Database error",
-      debug: isVapiLeadsDebugEnabled() ? analyzed.message : undefined,
-      debugDetails: isVapiLeadsDebugEnabled() ? buildDebugPayload(analyzed) : undefined,
-    };
+    return dbFailure(analyzed, "insert");
   }
 
   const phoneDigits = normalizePhoneDigits(data.phone_number);

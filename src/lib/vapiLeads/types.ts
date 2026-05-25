@@ -22,7 +22,16 @@ export type SanitizedVapiLead = {
   other_inquiries: string;
 };
 
-export type VapiLeadApiSuccess = {
+/** Bumped when changing webhook API behavior; visible in responses to verify deploys. */
+export const VAPI_LEADS_API_BUILD = "2026-05-25-force-debug-v2";
+
+export type VapiLeadApiMeta = {
+  debug_test: "deployment working";
+  api_build: string;
+  node_env: string;
+};
+
+export type VapiLeadApiSuccess = VapiLeadApiMeta & {
   success: true;
   message: string;
   leadId?: string;
@@ -39,12 +48,12 @@ export type VapiLeadApiErrorDebug = {
   hint: string | null;
 };
 
-export type VapiLeadApiError = {
+export type VapiLeadApiError = VapiLeadApiMeta & {
   success: false;
   message: string;
-  /** Present when NODE_ENV !== production or VAPI_LEADS_DEBUG=true */
-  debug?: string;
-  debugDetails?: VapiLeadApiErrorDebug;
+  debug: string;
+  debugDetails: VapiLeadApiErrorDebug;
+  operation?: "insert" | "update" | "select_duplicate";
 };
 
 export type VapiLeadApiResponse = VapiLeadApiSuccess | VapiLeadApiError;

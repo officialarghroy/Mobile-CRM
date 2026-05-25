@@ -53,9 +53,10 @@ const VAPI_COLUMN_HINTS = new Set([
   "status",
 ]);
 
+/** Always on until webhook is stable; set VAPI_LEADS_DEBUG=false to hide error details in responses. */
 export function isVapiLeadsDebugEnabled(): boolean {
-  if (process.env.VAPI_LEADS_DEBUG === "true") return true;
-  return process.env.NODE_ENV !== "production";
+  if (process.env.VAPI_LEADS_DEBUG === "false") return false;
+  return true;
 }
 
 export function serializeSupabaseError(error: unknown): PostgrestErrorLike {
