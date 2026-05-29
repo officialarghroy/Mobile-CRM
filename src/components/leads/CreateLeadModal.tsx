@@ -6,7 +6,7 @@ import { RiCloseLine } from "react-icons/ri";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ModalScaffold } from "@/components/ui/ModalScaffold";
-import { LEAD_FORM_STEPS } from "@/components/leads/leadFormSteps";
+import { LEAD_FORM_LAST_STEP, LEAD_FORM_STEPS } from "@/components/leads/leadFormSteps";
 
 export type CreateLeadAction = (formData: FormData) => Promise<void>;
 
@@ -48,7 +48,7 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
   }, [open, close]);
 
   const runCreateLead = () => {
-    if (stepRef.current !== 2) return;
+    if (stepRef.current !== LEAD_FORM_LAST_STEP) return;
     const form = formRef.current;
     if (!form) return;
     const fd = new FormData(form);
@@ -64,11 +64,11 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
     });
   };
 
-  /** Enter in a field fires submit; advance on Basic or Contact, create only on Equipment. */
+  /** Enter in a field fires submit; advance on Details, create only on Equipment. */
   const handleFormSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (stepRef.current < 2) {
-      setStep((s) => Math.min(s + 1, 2));
+    if (stepRef.current < LEAD_FORM_LAST_STEP) {
+      setStep((s) => Math.min(s + 1, LEAD_FORM_LAST_STEP));
       return;
     }
     runCreateLead();
@@ -100,7 +100,7 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
               aria-label="Add lead steps"
               className="mb-6 rounded-2xl bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-[var(--border)]/70"
             >
-              <div className="grid grid-cols-3 gap-1">
+              <div className="grid grid-cols-2 gap-1">
                 {LEAD_FORM_STEPS.map((s) => {
                   const selected = step === s.id;
                   return (
@@ -157,17 +157,6 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
                     <option value="client">Client</option>
                   </select>
                 </div>
-              </div>
-            </section>
-
-            <section
-              id="create-lead-panel-1"
-              role="tabpanel"
-              aria-labelledby="create-lead-tab-1"
-              hidden={step !== 1}
-              className="space-y-4"
-            >
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Input
                   name="email"
                   type="email"
@@ -188,10 +177,10 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
             </section>
 
             <section
-              id="create-lead-panel-2"
+              id="create-lead-panel-1"
               role="tabpanel"
-              aria-labelledby="create-lead-tab-2"
-              hidden={step !== 2}
+              aria-labelledby="create-lead-tab-1"
+              hidden={step !== 1}
               className="space-y-4"
             >
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -236,7 +225,7 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
               ) : (
                 <span className="hidden sm:block sm:min-w-[5rem]" aria-hidden />
               )}
-              {step < 2 ? (
+              {step < LEAD_FORM_LAST_STEP ? (
                 <Button
                   type="button"
                   className="w-full sm:ml-auto sm:w-auto sm:min-w-[8rem]"
@@ -245,7 +234,7 @@ export function CreateLeadModal({ open, onOpenChange, createLead }: CreateLeadMo
                   onClick={(ev) => {
                     ev.preventDefault();
                     ev.stopPropagation();
-                    setStep((prev) => Math.min(prev + 1, 2));
+                    setStep((prev) => Math.min(prev + 1, LEAD_FORM_LAST_STEP));
                   }}
                 >
                   Continue

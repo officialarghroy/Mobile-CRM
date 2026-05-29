@@ -6,7 +6,7 @@ import { RiArrowDownSLine } from "react-icons/ri";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { SurfaceListShell } from "@/components/ui/SurfaceListShell";
-import { LEAD_FORM_STEPS } from "@/components/leads/leadFormSteps";
+import { LEAD_FORM_LAST_STEP, LEAD_FORM_STEPS } from "@/components/leads/leadFormSteps";
 
 const textareaFieldClass =
   "min-h-[5.5rem] w-full resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[0.9375rem] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]/75 outline-none transition-colors duration-150 focus:border-[var(--accent-strong)] focus:ring-2 focus:ring-[#2460fa1f] disabled:cursor-not-allowed disabled:opacity-60";
@@ -71,7 +71,7 @@ function LeadDetailContactFormInner({
           aria-label="Lead details sections"
           className="rounded-none rounded-t-[calc(0.75rem-1px)] border-b border-[var(--border)] bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]"
         >
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-2 gap-1">
             {LEAD_FORM_STEPS.map((s) => {
               const selected = step === s.id;
               return (
@@ -115,6 +115,8 @@ function LeadDetailContactFormInner({
             <div className="sm:col-span-2">
               <ReadOnlyField label="Type of Lead" value={values.type === "client" ? "Client" : "Lead"} />
             </div>
+            <ReadOnlyField label="Email Address" value={values.email} />
+            <ReadOnlyField label="Phone Number" value={values.phone} />
           </section>
 
           <section
@@ -122,17 +124,6 @@ function LeadDetailContactFormInner({
             role="tabpanel"
             aria-labelledby="lead-detail-ro-tab-1"
             hidden={step !== 1}
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
-          >
-            <ReadOnlyField label="Email Address" value={values.email} />
-            <ReadOnlyField label="Phone Number" value={values.phone} />
-          </section>
-
-          <section
-            id="lead-detail-ro-panel-2"
-            role="tabpanel"
-            aria-labelledby="lead-detail-ro-tab-2"
-            hidden={step !== 2}
             className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           >
             <ReadOnlyField label="Equipment Brand" value={values.equipmentBrand} />
@@ -163,7 +154,7 @@ function LeadDetailContactFormInner({
           aria-label="Lead details sections"
           className="rounded-none rounded-t-[calc(0.75rem-1px)] border-b border-[var(--border)] bg-[var(--surface-muted)]/90 p-1 shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)]"
         >
-          <div className="grid grid-cols-3 gap-1">
+          <div className="grid grid-cols-2 gap-1">
             {LEAD_FORM_STEPS.map((s) => {
               const selected = step === s.id;
               return (
@@ -226,17 +217,6 @@ function LeadDetailContactFormInner({
                   />
                 </div>
               </div>
-            </div>
-          </section>
-
-          <section
-            id="lead-detail-panel-1"
-            role="tabpanel"
-            aria-labelledby="lead-detail-tab-1"
-            hidden={step !== 1}
-            className="space-y-4"
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 name="email"
                 type="email"
@@ -257,10 +237,10 @@ function LeadDetailContactFormInner({
           </section>
 
           <section
-            id="lead-detail-panel-2"
+            id="lead-detail-panel-1"
             role="tabpanel"
-            aria-labelledby="lead-detail-tab-2"
-            hidden={step !== 2}
+            aria-labelledby="lead-detail-tab-1"
+            hidden={step !== 1}
             className="space-y-4"
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -294,8 +274,13 @@ function LeadDetailContactFormInner({
           ) : (
             <span className="hidden sm:block sm:min-w-[5rem]" aria-hidden />
           )}
-          {step < 2 ? (
-            <Button type="button" className="w-full sm:ml-auto sm:w-auto sm:min-w-[8rem]" formNoValidate onClick={() => setStep((p) => p + 1)}>
+          {step < LEAD_FORM_LAST_STEP ? (
+            <Button
+              type="button"
+              className="w-full sm:ml-auto sm:w-auto sm:min-w-[8rem]"
+              formNoValidate
+              onClick={() => setStep((p) => Math.min(p + 1, LEAD_FORM_LAST_STEP))}
+            >
               Continue
             </Button>
           ) : (
