@@ -129,6 +129,7 @@ export async function createCalendarEvent(formData: FormData): Promise<CalendarE
 
     revalidatePath("/calendar", "page");
     revalidatePath("/tasks");
+    revalidatePath("/team-updates");
     revalidatePath("/notifications", "page");
 
     // Notify whoever owns the task (self-assign, teammate, or personal), so in-app alerts always match My Tasks.
@@ -202,6 +203,7 @@ export async function deleteCalendarEvent(eventId: string, formData: FormData) {
 
     revalidatePath("/calendar", "page");
     revalidatePath("/tasks");
+    revalidatePath("/team-updates");
     if (leadId) {
       revalidatePath(`/leads/${leadId}`);
     }

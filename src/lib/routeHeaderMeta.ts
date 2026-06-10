@@ -41,6 +41,12 @@ export function getRouteHeaderMeta(pathname: string): RouteHeaderMeta {
   if (p === "/notifications") {
     return { title: "Notifications", subtitle: "Your updates and assignments" };
   }
+  if (p === "/team-updates" || p.startsWith("/team-updates/")) {
+    return {
+      title: "Team Updates",
+      subtitle: "See what everyone completed and what's in progress",
+    };
+  }
   if (p === "/users") {
     return { title: "Users", subtitle: "Team members and roles" };
   }

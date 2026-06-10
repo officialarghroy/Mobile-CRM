@@ -11,6 +11,7 @@ import {
   RiListCheck2,
   RiLogoutBoxRLine,
   RiNotification3Line,
+  RiPulseLine,
   RiTeamLine,
   RiUserLine,
 } from "react-icons/ri";
@@ -155,6 +156,14 @@ export function HamburgerMenu({ initialProfile, notificationUnreadCount }: Hambu
                   >
                     <RiCalendarEventLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
                     Calendar
+                  </Link>
+                  <Link
+                    href="/team-updates"
+                    onClick={() => setIsOpen(false)}
+                    className="flex min-h-[3rem] items-center gap-4 rounded-xl px-4 py-4 text-xl font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-strong)] focus-visible:ring-offset-2"
+                  >
+                    <RiPulseLine className="h-8 w-8 shrink-0 text-[var(--accent-strong)]" aria-hidden />
+                    Team Updates
                   </Link>
                   <Link
                     href="/notifications"

@@ -44,6 +44,7 @@ export async function setTaskCompleted(eventId: string, completed: boolean): Pro
 
     revalidatePath("/tasks");
     revalidatePath("/calendar", "page");
+    revalidatePath("/team-updates");
     if (leadId) {
       revalidatePath(`/leads/${leadId}`);
     }
