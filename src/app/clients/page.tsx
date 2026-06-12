@@ -4,12 +4,12 @@ import { LeadsPageContent } from "@/components/leads/LeadsPageContent";
 import { LeadsListSkeleton } from "@/components/leads/LeadsListSkeleton";
 import { Container } from "@/components/ui/Container";
 
-export default function LeadsPage() {
+export default function ClientsPage() {
   return (
     <AppMain className="items-start">
       <Container className="space-y-5 pb-[var(--app-page-scroll-pad)]">
         <Suspense fallback={<LeadsListSkeleton />}>
-          <LeadsPageContent />
+          <LeadsPageContent initialFilter="client" />
         </Suspense>
       </Container>
     </AppMain>

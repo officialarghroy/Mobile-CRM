@@ -18,7 +18,7 @@ export function AppHeaderActions() {
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [isRefreshPending, startRefreshTransition] = useTransition();
 
-  if (pathname === "/leads") {
+  if (pathname === "/leads" || pathname === "/clients") {
     return (
       <div className="ml-auto shrink-0">
         <AddLeadInline createLead={createLead} compact />

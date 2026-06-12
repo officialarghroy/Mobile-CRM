@@ -3,8 +3,18 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { RiArrowLeftLine, RiArrowRightLine, RiCalendarEventLine, RiTeamLine } from "react-icons/ri";
+import {
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiCalendarEventLine,
+  RiTeamLine,
+  RiUserLine,
+} from "react-icons/ri";
 import { Container } from "@/components/ui/Container";
+
+function isClientsRoute(pathname: string): boolean {
+  return pathname === "/clients" || pathname.startsWith("/clients/");
+}
 
 function isLeadsRoute(pathname: string): boolean {
   return pathname === "/leads" || pathname.startsWith("/leads/");
@@ -62,6 +72,7 @@ function BottomNavItem({ href, routeActive, label, Icon }: BottomNavItemProps) {
 export function BottomNav() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
+  const clientsActive = isClientsRoute(pathname);
   const leadsActive = isLeadsRoute(pathname);
   const calendarActive = pathname === "/calendar" || pathname.startsWith("/calendar/");
 
@@ -80,7 +91,8 @@ export function BottomNav() {
           >
             <RiArrowLeftLine className="h-5 w-5 shrink-0" aria-hidden />
           </button>
-          <div className="min-w-0 flex-1 grid grid-cols-2 gap-1 rounded-xl bg-[var(--surface-muted)] p-1">
+          <div className="min-w-0 flex-1 grid grid-cols-3 gap-1 rounded-xl bg-[var(--surface-muted)] p-1">
+            <BottomNavItem href="/clients" routeActive={clientsActive} label="Client" Icon={RiUserLine} />
             <BottomNavItem href="/leads" routeActive={leadsActive} label="Leads" Icon={RiTeamLine} />
             <BottomNavItem href="/calendar" routeActive={calendarActive} label="Calendar" Icon={RiCalendarEventLine} />
           </div>

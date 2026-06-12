@@ -1,0 +1,255 @@
+import { LeadsListSection, type LeadCardData, type LeadFilter } from "@/components/leads/LeadsListSection";
+import { isMissingDeletedAtColumnError } from "@/lib/leadsSoftDeleteSupport";
+import { createSupabaseServerClient } from "@/lib/supabaseServer";
+import { fetchTeamMembers } from "@/lib/teamAccess";
+
+type Lead = {
+  id: string;
+  name: string;
+  business: string | null;
+  address: string | null;
+  created_at: string;
+  type: string | null;
+  status?: string | null;
+  is_read?: boolean | null;
+  priority_order?: number | null;
+};
+
+type LeadUpdateRow = {
+  lead_id: string;
+  content: string;
+  created_at: string;
+};
+
+type LatestLeadActivity = {
+  content: string;
+  createdAt: string;
+};
+
+type LeadsPageContentProps = {
+  initialFilter?: LeadFilter;
+};
+
+function normalizeLeadStatus(raw: unknown): NonNullable<LeadCardData["status"]> {
+  const s = String(raw ?? "pending").trim().toLowerCase();
+  if (s === "paid") return "completed";
+  if (s === "new") return "pending";
+  if (
+    s === "urgent" ||
+    s === "not_paid" ||
+    s === "pending" ||
+    s === "completed" ||
+    s === "order_parts" ||
+    s === "parts_ordered"
+  ) {
+    return s;
+  }
+  return "pending";
+}
+
+function normalizeIsRead(raw: unknown): boolean {
+  return raw === true;
+}
+
+function normalizePriorityOrder(raw: unknown): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatTimestamp(createdAt: string): string {
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * 60 * 1000;
+  const dayMs = 24 * hourMs;
+
+  if (diffMs < hourMs) {
+    const minutes = Math.max(1, Math.floor(diffMs / minuteMs));
+    return `${minutes}m ago`;
+  }
+
+  if (diffMs < dayMs) {
+    const hours = Math.max(1, Math.floor(diffMs / hourMs));
+    return `${hours}h ago`;
+  }
+
+  if (diffMs < dayMs * 2) {
+    return "Yesterday";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function sortLeadsByPriorityAndCreated(a: LeadCardData, b: LeadCardData): number {
+  const pa = a.priority_order ?? 0;
+  const pb = b.priority_order ?? 0;
+  if (pb !== pa) return pb - pa;
+  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+}
+
+type SupabaseError = {
+  code?: string;
+  message?: string;
+  details?: string;
+};
+
+function logFetchLeadsError(error: unknown) {
+  if (error && typeof error === "object" && "message" in error) {
+    const e = error as SupabaseError;
+    console.error("Failed to fetch leads:", e.message, e.code ?? "", e.details ?? "");
+    return;
+  }
+  if (error instanceof Error) {
+    console.error("Failed to fetch leads:", error.message);
+    return;
+  }
+  console.error("Failed to fetch leads:", error);
+}
+
+export async function LeadsPageContent({ initialFilter = "lead" }: LeadsPageContentProps) {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerUserId = user?.id ?? null;
+  const viewerEmail = user?.email ?? "";
+  const { rows: teamMemberRows } = await fetchTeamMembers(supabase);
+
+  let leads: LeadCardData[] = [];
+
+  try {
+    const leadsSelectFull =
+      "id, name, business, address, created_at, type, status, is_read, priority_order";
+    const leadsSelectBasic = "id, name, business, address, created_at, type";
+
+    let data: Lead[] | null = null;
+    let error = null as SupabaseError | null;
+
+    const first = await supabase
+      .from("leads")
+      .select(leadsSelectFull)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    data = first.data as Lead[] | null;
+    error = first.error as SupabaseError | null;
+
+    if (error) {
+      const supabaseError = error;
+      const msg = String(supabaseError.message ?? "").toLowerCase();
+      const missingOptionalListCols =
+        supabaseError.code === "42703" ||
+        (msg.includes("does not exist") &&
+          (msg.includes("status") || msg.includes("is_read") || msg.includes("priority_order")));
+      if (missingOptionalListCols) {
+        const fallback = await supabase
+          .from("leads")
+          .select(leadsSelectBasic)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false });
+        data = fallback.data as Lead[] | null;
+        error = fallback.error as SupabaseError | null;
+      } else if (isMissingDeletedAtColumnError(supabaseError)) {
+        const retryFull = await supabase
+          .from("leads")
+          .select(leadsSelectFull)
+          .order("created_at", { ascending: false });
+        let resultData = retryFull.data as Lead[] | null;
+        let resultError = retryFull.error as SupabaseError | null;
+        if (retryFull.error) {
+          const rErr = retryFull.error as SupabaseError;
+          const rMsg = String(rErr.message ?? "").toLowerCase();
+          const missingOpt =
+            rErr.code === "42703" ||
+            (rMsg.includes("does not exist") &&
+              (rMsg.includes("status") || rMsg.includes("is_read") || rMsg.includes("priority_order")));
+          if (missingOpt) {
+            const retryBasic = await supabase
+              .from("leads")
+              .select(leadsSelectBasic)
+              .order("created_at", { ascending: false });
+            resultData = retryBasic.data as Lead[] | null;
+            resultError = retryBasic.error as SupabaseError | null;
+          }
+        }
+        data = resultData;
+        error = resultError;
+      }
+    }
+
+    if (error) {
+      const supabaseError = error as SupabaseError;
+      if (supabaseError.code !== "PGRST205") {
+        throw error;
+      }
+    }
+
+    if (data) {
+      const leadRows = data as Lead[];
+      const leadIds = leadRows.map((lead) => lead.id);
+
+      const latestActivityByLeadId = new Map<string, LatestLeadActivity>();
+
+      if (leadIds.length) {
+        const { data: updatesData, error: updatesError } = await supabase
+          .from("lead_updates")
+          .select("lead_id, content, created_at")
+          .in("lead_id", leadIds)
+          .order("created_at", { ascending: false });
+
+        if (updatesError) {
+          console.error("Failed to fetch lead updates for list:", updatesError);
+        } else {
+          (updatesData as LeadUpdateRow[] | null)?.forEach((update) => {
+            if (!latestActivityByLeadId.has(update.lead_id)) {
+              latestActivityByLeadId.set(update.lead_id, {
+                content: update.content,
+                createdAt: update.created_at,
+              });
+            }
+          });
+        }
+      }
+
+      leads = leadRows.map((lead) => {
+        const latestActivity = latestActivityByLeadId.get(lead.id);
+        const normalizedType =
+          typeof lead.type === "string" && lead.type.trim().toLowerCase() === "client"
+            ? "client"
+            : "lead";
+        const activityAt = latestActivity?.createdAt ?? lead.created_at;
+        return {
+          id: lead.id,
+          name: lead.name,
+          business: lead.business ?? "",
+          address: lead.address ?? "",
+          type: normalizedType,
+          update: latestActivity?.content ?? "No activity yet",
+          activityAt,
+          timestamp: formatTimestamp(activityAt),
+          created_at: lead.created_at,
+          status: normalizeLeadStatus(lead.status),
+          is_read: normalizeIsRead(lead.is_read),
+          priority_order: normalizePriorityOrder(lead.priority_order),
+        };
+      });
+
+      leads.sort(sortLeadsByPriorityAndCreated);
+    }
+  } catch (error) {
+    logFetchLeadsError(error);
+  }
+
+  return (
+    <LeadsListSection
+      leads={leads}
+      teamMembers={teamMemberRows}
+      viewerUserId={viewerUserId}
+      viewerEmail={viewerEmail}
+      initialFilter={initialFilter}
+    />
+  );
+}

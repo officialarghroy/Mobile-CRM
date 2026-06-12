@@ -37,13 +37,14 @@ import type { LeadCardData, LeadStatus } from "./leadCardTypes";
 
 export type { LeadCardData, LeadStatus } from "./leadCardTypes";
 
-type LeadFilter = "lead" | "client" | "invoice" | "completed";
+export type LeadFilter = "lead" | "client" | "invoice" | "completed";
 
 type LeadsListSectionProps = {
   leads: LeadCardData[];
   teamMembers: TeamMemberRow[];
   viewerUserId: string | null;
   viewerEmail: string;
+  initialFilter?: LeadFilter;
 };
 
 const TYPE_DISPLAY: Record<LeadCardData["type"], string> = {
@@ -133,8 +134,9 @@ export function LeadsListSection({
   teamMembers,
   viewerUserId,
   viewerEmail,
+  initialFilter = "lead",
 }: LeadsListSectionProps) {
-  const [filter, setFilter] = useState<LeadFilter>("lead");
+  const [filter, setFilter] = useState<LeadFilter>(initialFilter);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [items, setItems] = useState<LeadCardData[]>(() => sortLeadsForDisplay(leads));
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
@@ -351,19 +353,6 @@ export function LeadsListSection({
             <button
               type="button"
               role="tab"
-              aria-selected={filter === "lead"}
-              onClick={() => setFilter("lead")}
-              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                filter === "lead"
-                  ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
-              }`}
-            >
-              Leads
-            </button>
-            <button
-              type="button"
-              role="tab"
               aria-selected={filter === "client"}
               onClick={() => setFilter("client")}
               className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -373,6 +362,19 @@ export function LeadsListSection({
               }`}
             >
               Clients
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={filter === "lead"}
+              onClick={() => setFilter("lead")}
+              className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                filter === "lead"
+                  ? "bg-[var(--surface-accent)] text-[var(--accent-strong)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]"
+              }`}
+            >
+              Leads
             </button>
             <button
               type="button"

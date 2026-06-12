@@ -20,6 +20,9 @@ export function normalizePathname(pathname: string): string {
 export function getRouteHeaderMeta(pathname: string): RouteHeaderMeta {
   const p = normalizePathname(pathname);
 
+  if (p === "/clients") {
+    return { title: "Clients", subtitle: "Your active client accounts" };
+  }
   if (p === "/leads") {
     return { title: "Leads", subtitle: "Your pipeline and clients" };
   }
